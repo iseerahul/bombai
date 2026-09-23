@@ -135,23 +135,33 @@ public spot derived from it is a separate row with its own separate note.
 
 ## Running it
 
-Requires **Node 22+** (the dev server uses the built-in `node:sqlite`).
+Requires **Node 22+** — not incidental, the dev server's D1 shim is built on
+the built-in `node:sqlite`, which does not exist before it.
+
+Two dependency trees, because the landing is a different stack:
 
 ```bash
 npm install
+npm install --prefix mumbai-zenscape
 ```
 
-### 1. Build the place data — required; the app is empty without it
+### 1. Place data — already committed, nothing to run
+
+`public/data/*.geojson` is in the repo on purpose, so a bad Overpass day can
+never block a build or a demo. A fresh clone has all 19,336 places and needs
+no pipeline run.
+
+Only re-run it when you want fresher data, roughly weekly:
 
 ```bash
-npm run data
+npm run data         # hits Overpass + the MCGM toilet dataset
+npm run data:civic   # just the small civic layers, faster
 ```
 
-Hits Overpass, merges the MCGM public-toilet dataset, writes
-`public/data/*.geojson`. Takes a couple of minutes and is deliberately polite
-(3s between queries, mirror failover). Run it manually, roughly weekly — never
-from the app. It warns loudly if counts come back far below the baselines above,
-which means the pipeline broke rather than the city changing.
+It takes a couple of minutes and is deliberately polite (3s between queries,
+mirror failover). Run it manually — never from the app. It warns loudly if
+counts come back far below the baselines above, which means the pipeline broke
+rather than the city changing.
 
 ```bash
 npm run data:civic   # just the small civic layers, for faster iteration
@@ -163,8 +173,13 @@ npm run data:civic   # just the small civic layers, for faster iteration
 cp .dev.vars.example .dev.vars
 ```
 
-Everything in there is optional for a first run except `IP_SALT`. Google sign-in
-needs an OAuth 2.0 Client ID from
+Copying the file is not optional, even with every value left as a placeholder:
+`APP_ORIGIN` is what enables the local dev login, and without it you can browse
+everything but cannot sign in at all — so no pins, activities or trips. The
+placeholders in the example are recognised as placeholders, so the copy works
+as-is.
+
+Google sign-in needs an OAuth 2.0 Client ID from
 [console.cloud.google.com/apis/credentials](https://console.cloud.google.com/apis/credentials)
 with `http://localhost:5173/api/auth/callback` as an authorised redirect URI.
 
@@ -176,13 +191,16 @@ bypass must never sit beside working auth.
 node scripts/check-auth.mjs   # validates the credentials before you debug blind
 ```
 
-### 3. Create the database
+### 3. The database creates itself
+
+Nothing to do locally. On first start the dev server finds no database and
+builds one from `worker/schema.sql` under `.wrangler/state`. Wrangler is only
+needed when you actually deploy:
 
 ```bash
-npx wrangler d1 create civic-reports
+npx wrangler d1 create civic-reports   # deploying only
 # paste the printed database_id into wrangler.toml
-npm run db:init          # local SQLite, under .wrangler/state
-npm run db:init:remote   # only when deploying
+npm run db:init:remote
 ```
 
 ### 4. Run it
@@ -202,6 +220,17 @@ Note the map's dev URL is **`/app/`**, not `/`. That is deliberate: its Vite
 Vite proxies `/api` to the Worker, so the browser only makes same-origin
 requests, exactly as in production.
 
+### 5. Load some events
+
+The database starts empty. One request fills it from the live sources:
+
+```bash
+curl -X POST http://127.0.0.1:8787/api/events/refresh
+```
+
+Expect a couple of hundred events. It is also the "Refresh" button in the
+Events tab, and it runs on a cron once deployed.
+
 `mumbai-zenscape/.env.development` points "Explore Bambai" at the map's dev
 port. It is `.env.development` rather than `.env` on purpose — a plain `.env`
 is read in *every* mode and would bake `127.0.0.1` into the production build.
@@ -215,7 +244,7 @@ under `.wrangler/state`, so data created either way is shared. It is not a
 Workers emulator: no cron triggers, no Durable Objects, no KV, no platform
 limits. On a machine where `wrangler dev` works, use it.
 
-### 5. Tests
+### 6. Tests
 
 ```bash
 node scripts/test-events.mjs   # events: import integrity, auth boundaries, chat
@@ -228,7 +257,7 @@ breaks here is authorisation boundaries and import idempotency — neither of wh
 a unit test would catch. They sign in through the dev login, so **they skip
 themselves when Google credentials are configured** and say so.
 
-### 6. Deploy
+### 7. Deploy
 
 ```bash
 npm run build     # map -> dist/app, then landing -> dist/
