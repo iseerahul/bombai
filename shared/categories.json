@@ -1,0 +1,505 @@
+{
+  "drinking_water": {
+    "label": "Drinking water",
+    "short": "Water",
+    "icon": "💧",
+    "color": "#0284c7",
+    "eager": true,
+    "civic": true,
+    "overpass": [
+      {
+        "key": "amenity",
+        "values": [
+          "drinking_water",
+          "water_point"
+        ]
+      }
+    ],
+    "synonyms": [
+      "water",
+      "drinking water",
+      "drinking-water",
+      "water fountain",
+      "fountain",
+      "water point",
+      "piyau",
+      "pyau",
+      "paani",
+      "pani",
+      "tap",
+      "thirsty"
+    ]
+  },
+  "toilets": {
+    "label": "Public toilets",
+    "short": "Toilets",
+    "icon": "🚻",
+    "color": "#7c3aed",
+    "_eagerNote": "Was eager, now lazy: the MCGM merge took this layer from ~360 to ~8,600 features (2.4 MB). Too heavy to load on startup over mobile data, which is the target. It now loads on first toilet query and is cached for the session.",
+    "eager": false,
+    "civic": true,
+    "overpass": [
+      {
+        "key": "amenity",
+        "values": [
+          "toilets"
+        ]
+      }
+    ],
+    "synonyms": [
+      "toilet",
+      "toilets",
+      "public toilet",
+      "washroom",
+      "restroom",
+      "loo",
+      "bathroom",
+      "sulabh",
+      "shauchalaya",
+      "urinal"
+    ]
+  },
+  "health": {
+    "label": "Hospitals & clinics",
+    "short": "Health",
+    "icon": "🏥",
+    "color": "#dc2626",
+    "eager": false,
+    "civic": true,
+    "overpass": [
+      {
+        "key": "amenity",
+        "values": [
+          "hospital",
+          "clinic",
+          "doctors"
+        ]
+      }
+    ],
+    "synonyms": [
+      "hospital",
+      "clinic",
+      "doctor",
+      "doctors",
+      "dr",
+      "physician",
+      "dispensary",
+      "emergency",
+      "dermatologist",
+      "dentist",
+      "paediatrician",
+      "pediatrician",
+      "gynaecologist",
+      "medical"
+    ]
+  },
+  "pharmacy": {
+    "label": "Pharmacies",
+    "short": "Pharmacy",
+    "icon": "💊",
+    "color": "#059669",
+    "eager": false,
+    "civic": true,
+    "overpass": [
+      {
+        "key": "amenity",
+        "values": [
+          "pharmacy"
+        ]
+      }
+    ],
+    "synonyms": [
+      "pharmacy",
+      "chemist",
+      "medical store",
+      "medicine",
+      "drugstore"
+    ]
+  },
+  "food": {
+    "label": "Food & drink",
+    "short": "Food",
+    "icon": "🍽️",
+    "color": "#ea580c",
+    "eager": false,
+    "civic": false,
+    "overpass": [
+      {
+        "key": "amenity",
+        "values": [
+          "cafe",
+          "restaurant",
+          "fast_food",
+          "bakery",
+          "ice_cream"
+        ]
+      },
+      {
+        "key": "shop",
+        "values": [
+          "bakery",
+          "pastry",
+          "confectionery"
+        ]
+      }
+    ],
+    "synonyms": [
+      "food",
+      "eat",
+      "restaurant",
+      "cafe",
+      "coffee",
+      "bakery",
+      "cheesecake",
+      "cake",
+      "dessert",
+      "breakfast",
+      "lunch",
+      "dinner",
+      "snack",
+      "vada pav",
+      "biryani",
+      "pizza",
+      "ice cream",
+      "hungry"
+    ]
+  },
+  "atm": {
+    "label": "ATMs & banks",
+    "short": "ATM",
+    "icon": "🏧",
+    "color": "#0891b2",
+    "eager": false,
+    "civic": true,
+    "overpass": [
+      {
+        "key": "amenity",
+        "values": [
+          "atm",
+          "bank"
+        ]
+      }
+    ],
+    "synonyms": [
+      "atm",
+      "bank",
+      "cash",
+      "cash machine",
+      "withdraw"
+    ]
+  },
+  "police": {
+    "label": "Police stations",
+    "short": "Police",
+    "icon": "🚓",
+    "color": "#1d4ed8",
+    "eager": false,
+    "civic": true,
+    "overpass": [
+      {
+        "key": "amenity",
+        "values": [
+          "police"
+        ]
+      }
+    ],
+    "synonyms": [
+      "police",
+      "police station",
+      "chowky",
+      "cop",
+      "thana"
+    ]
+  },
+  "transit": {
+    "label": "Stations & bus depots",
+    "short": "Transit",
+    "icon": "🚉",
+    "color": "#4338ca",
+    "eager": false,
+    "civic": true,
+    "overpass": [
+      {
+        "key": "railway",
+        "values": [
+          "station",
+          "halt"
+        ]
+      },
+      {
+        "key": "amenity",
+        "values": [
+          "bus_station"
+        ]
+      }
+    ],
+    "synonyms": [
+      "station",
+      "railway station",
+      "train",
+      "local",
+      "bus station",
+      "bus depot",
+      "metro",
+      "metro station",
+      "subway",
+      "transit",
+      "terminus"
+    ]
+  },
+  "shelter": {
+    "label": "Shelters",
+    "short": "Shelter",
+    "icon": "⛱️",
+    "color": "#65a30d",
+    "eager": false,
+    "civic": true,
+    "overpass": [
+      {
+        "key": "amenity",
+        "values": [
+          "shelter"
+        ]
+      }
+    ],
+    "synonyms": [
+      "shelter",
+      "shade",
+      "cover",
+      "rain shelter",
+      "bus shelter"
+    ]
+  },
+  "bench": {
+    "label": "Benches & seating",
+    "short": "Bench",
+    "icon": "🪑",
+    "color": "#a16207",
+    "eager": false,
+    "civic": true,
+    "overpass": [
+      {
+        "key": "amenity",
+        "values": [
+          "bench"
+        ]
+      }
+    ],
+    "synonyms": [
+      "bench",
+      "seat",
+      "seating",
+      "sit",
+      "rest"
+    ]
+  },
+  "park": {
+    "label": "Parks & gardens",
+    "short": "Parks",
+    "icon": "🌳",
+    "color": "#16a34a",
+    "eager": false,
+    "civic": false,
+    "overpass": [
+      {
+        "key": "leisure",
+        "values": [
+          "park",
+          "garden",
+          "nature_reserve",
+          "dog_park"
+        ]
+      }
+    ],
+    "synonyms": [
+      "park",
+      "garden",
+      "green",
+      "greenery",
+      "nature",
+      "walk",
+      "stroll",
+      "chill",
+      "relax",
+      "unwind",
+      "fresh air",
+      "sit outside",
+      "picnic",
+      "maidan",
+      "udyan",
+      "baug"
+    ]
+  },
+  "waterfront": {
+    "label": "Beaches & viewpoints",
+    "short": "Waterfront",
+    "icon": "🌊",
+    "color": "#0891b2",
+    "eager": false,
+    "civic": false,
+    "overpass": [
+      {
+        "key": "natural",
+        "values": [
+          "beach"
+        ]
+      },
+      {
+        "key": "tourism",
+        "values": [
+          "viewpoint"
+        ]
+      },
+      {
+        "key": "leisure",
+        "values": [
+          "marina",
+          "beach_resort"
+        ]
+      }
+    ],
+    "synonyms": [
+      "beach",
+      "sea",
+      "seaface",
+      "sea face",
+      "chowpatty",
+      "viewpoint",
+      "view",
+      "sunset",
+      "waterfront",
+      "promenade",
+      "jetty",
+      "shore",
+      "ocean"
+    ]
+  },
+  "sports": {
+    "label": "Sports & play",
+    "short": "Sports",
+    "icon": "⚽",
+    "color": "#ca8a04",
+    "eager": false,
+    "civic": false,
+    "overpass": [
+      {
+        "key": "leisure",
+        "values": [
+          "sports_centre",
+          "pitch",
+          "fitness_centre",
+          "stadium",
+          "playground",
+          "track",
+          "swimming_pool"
+        ]
+      }
+    ],
+    "synonyms": [
+      "sport",
+      "sports",
+      "play",
+      "playground",
+      "gym",
+      "fitness",
+      "workout",
+      "football",
+      "cricket",
+      "ground",
+      "turf",
+      "court",
+      "stadium",
+      "swim",
+      "pool",
+      "run",
+      "active",
+      "kids"
+    ]
+  },
+  "culture": {
+    "label": "Culture & cinema",
+    "short": "Culture",
+    "icon": "🎭",
+    "color": "#9333ea",
+    "eager": false,
+    "civic": false,
+    "overpass": [
+      {
+        "key": "tourism",
+        "values": [
+          "museum",
+          "gallery",
+          "artwork",
+          "attraction",
+          "theme_park",
+          "zoo"
+        ]
+      },
+      {
+        "key": "amenity",
+        "values": [
+          "theatre",
+          "arts_centre",
+          "cinema",
+          "library"
+        ]
+      }
+    ],
+    "synonyms": [
+      "culture",
+      "museum",
+      "gallery",
+      "art",
+      "exhibition",
+      "theatre",
+      "theater",
+      "cinema",
+      "movie",
+      "movies",
+      "film",
+      "library",
+      "read",
+      "books",
+      "show",
+      "play",
+      "quiet",
+      "study"
+    ]
+  },
+  "market": {
+    "label": "Markets & malls",
+    "short": "Markets",
+    "icon": "🛍️",
+    "color": "#db2777",
+    "eager": false,
+    "civic": false,
+    "overpass": [
+      {
+        "key": "amenity",
+        "values": [
+          "marketplace"
+        ]
+      },
+      {
+        "key": "shop",
+        "values": [
+          "mall",
+          "department_store"
+        ]
+      }
+    ],
+    "synonyms": [
+      "market",
+      "bazaar",
+      "mall",
+      "shopping",
+      "shop",
+      "buy",
+      "browse",
+      "lively",
+      "busy",
+      "crowd",
+      "street shopping"
+    ]
+  }
+}

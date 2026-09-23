@@ -1,0 +1,1093 @@
+{
+  "runs": [
+    {
+      "model": "gemini-3.1-flash-lite",
+      "id": "S1",
+      "density": "sparse",
+      "query": "Where can I find working drinking water in Powai?",
+      "area": "Powai",
+      "categories": [
+        "drinking_water"
+      ],
+      "candidateCount": 28,
+      "ranAt": "2026-09-15T10:35:21.990Z",
+      "ungrounded": {
+        "count": 3,
+        "places": [
+          {
+            "name": "Powai Lake Promenade Public Tap",
+            "area": "Powai",
+            "match": null
+          },
+          {
+            "name": "IIT Bombay Campus Water Fountains",
+            "area": "Powai",
+            "match": "Bombay Hospital"
+          },
+          {
+            "name": "Hiranandani Gardens Public Drinking Stations",
+            "area": "Powai",
+            "match": "Hiranandani Hospital"
+          }
+        ],
+        "inCorpus": 2,
+        "notInCorpus": 1,
+        "reply": "You can typically find public drinking water facilities near the Powai Lake promenade, inside the IIT Bombay campus, and at various public points within the Hiranandani Gardens area."
+      },
+      "grounded": {
+        "mode": "recommend",
+        "rawPickCount": 5,
+        "rawPickIds": [
+          "osm:node/6924350488",
+          "osm:node/4707055001",
+          "osm:node/5071072236",
+          "osm:node/5071072237",
+          "osm:node/5072774122"
+        ],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 5,
+        "finalMode": "recommend",
+        "reply": "Here are some drinking water sources identified in Powai."
+      }
+    },
+    {
+      "model": "gemini-3.1-flash-lite",
+      "id": "S2",
+      "density": "sparse",
+      "query": "Is there a public drinking water fountain in Bandra West?",
+      "area": "Bandra West",
+      "categories": [
+        "drinking_water"
+      ],
+      "candidateCount": 0,
+      "ranAt": "2026-09-15T10:35:29.431Z",
+      "ungrounded": {
+        "count": 0,
+        "places": [],
+        "inCorpus": 0,
+        "notInCorpus": 0,
+        "reply": "While there are no prominent public drinking water fountains in Bandra West, you can typically find filtered water dispensers at public parks like Joggers Park or within major railway stations."
+      },
+      "grounded": {
+        "mode": "search",
+        "rawPickCount": 0,
+        "rawPickIds": [],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 0,
+        "finalMode": "search",
+        "reply": "I am looking for drinking water fountains in Bandra West."
+      }
+    },
+    {
+      "model": "gemini-3.1-flash-lite",
+      "id": "S3",
+      "density": "sparse",
+      "query": "Best place to drink water for free in Chembur",
+      "area": "Chembur",
+      "categories": [
+        "drinking_water"
+      ],
+      "candidateCount": 1,
+      "ranAt": "2026-09-15T10:35:41.665Z",
+      "ungrounded": {
+        "count": 3,
+        "places": [
+          {
+            "name": "Chembur Railway Station Water Kiosk",
+            "area": "Chembur",
+            "match": "Chembur"
+          },
+          {
+            "name": "Acharya Atre Udyan",
+            "area": "Chembur",
+            "match": null
+          },
+          {
+            "name": "Diamond Garden",
+            "area": "Chembur",
+            "match": "Diamond Garden"
+          }
+        ],
+        "inCorpus": 2,
+        "notInCorpus": 1,
+        "reply": "In Chembur, you can typically find free drinking water facilities at public parks like Diamond Garden and Acharya Atre Udyan, as well as at the public water kiosks located near the Chembur Railway Station."
+      },
+      "grounded": {
+        "mode": "recommend",
+        "rawPickCount": 1,
+        "rawPickIds": [
+          "osm:node/12293013067"
+        ],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 1,
+        "finalMode": "recommend",
+        "reply": "Based on your request, here is the available drinking water facility in Chembur."
+      }
+    },
+    {
+      "model": "gemini-3.1-flash-lite",
+      "id": "S4",
+      "density": "sparse",
+      "query": "Where is there shade or shelter to sit in Dadar?",
+      "area": "Dadar",
+      "categories": [
+        "shelter"
+      ],
+      "candidateCount": 0,
+      "ranAt": "2026-09-15T10:35:50.063Z",
+      "ungrounded": {
+        "count": 4,
+        "places": [
+          {
+            "name": "Dadar West Promenade",
+            "area": "Dadar West",
+            "match": null
+          },
+          {
+            "name": "Shivaji Park",
+            "area": "Dadar West",
+            "match": "Shivaji Park Ground, Near Ganesh Temple, Dadar (W)"
+          },
+          {
+            "name": "Indu Mill Compound area",
+            "area": "Dadar West",
+            "match": null
+          },
+          {
+            "name": "Dadar Railway Station Waiting Rooms",
+            "area": "Dadar",
+            "match": null
+          }
+        ],
+        "inCorpus": 1,
+        "notInCorpus": 3,
+        "reply": "Dadar offers several spots for shade and shelter, ranging from the open-air seating along the Shivaji Park perimeter and the promenade to the indoor waiting facilities at the railway station."
+      },
+      "grounded": {
+        "mode": "search",
+        "rawPickCount": 0,
+        "rawPickIds": [],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 0,
+        "finalMode": "search",
+        "reply": "I am searching for shaded seating areas in Dadar."
+      }
+    },
+    {
+      "model": "gemini-3.1-flash-lite",
+      "id": "S5",
+      "density": "sparse",
+      "query": "Good public benches to sit on in Worli",
+      "area": "Worli",
+      "categories": [
+        "bench"
+      ],
+      "candidateCount": 0,
+      "ranAt": "2026-09-15T10:36:04.447Z",
+      "ungrounded": {
+        "count": 3,
+        "places": [
+          {
+            "name": "Worli Sea Face Promenade",
+            "area": "Worli",
+            "match": null
+          },
+          {
+            "name": "Dr. Annie Besant Road Footpath",
+            "area": "Worli",
+            "match": null
+          },
+          {
+            "name": "JK Kapur Garden",
+            "area": "Worli",
+            "match": null
+          }
+        ],
+        "inCorpus": 0,
+        "notInCorpus": 3,
+        "reply": "The best public seating in Worli is found along the Worli Sea Face promenade, which offers several benches facing the Arabian Sea."
+      },
+      "grounded": {
+        "mode": "search",
+        "rawPickCount": 0,
+        "rawPickIds": [],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 0,
+        "finalMode": "search",
+        "reply": "I am searching for public benches available in the Worli area."
+      }
+    },
+    {
+      "model": "gemini-3.1-flash-lite",
+      "id": "S6",
+      "density": "sparse",
+      "query": "Which is the best police station in Vile Parle?",
+      "area": "Vile Parle",
+      "categories": [
+        "police"
+      ],
+      "candidateCount": 3,
+      "ranAt": "2026-09-15T10:36:11.382Z",
+      "ungrounded": {
+        "count": 1,
+        "places": [
+          {
+            "name": "Vile Parle Police Station",
+            "area": "Vile Parle West",
+            "match": "POLICE STATION"
+          }
+        ],
+        "inCorpus": 1,
+        "notInCorpus": 0,
+        "reply": "The primary police station serving the Vile Parle area is the Vile Parle Police Station located in Vile Parle West."
+      },
+      "grounded": {
+        "mode": "search",
+        "rawPickCount": 0,
+        "rawPickIds": [],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 0,
+        "finalMode": "search",
+        "reply": "I could not identify any police stations located specifically within Vile Parle from the list provided."
+      }
+    },
+    {
+      "model": "gemini-3.1-flash-lite",
+      "id": "D1",
+      "density": "dense",
+      "query": "Best cheesecake in Bandra West",
+      "area": "Bandra West",
+      "categories": [
+        "food"
+      ],
+      "candidateCount": 40,
+      "ranAt": "2026-09-15T10:36:22.565Z",
+      "ungrounded": {
+        "count": 4,
+        "places": [
+          {
+            "name": "Theobroma",
+            "area": "Bandra West",
+            "match": "Theobroma"
+          },
+          {
+            "name": "Le 15 Patisserie",
+            "area": "Bandra West",
+            "match": null
+          },
+          {
+            "name": "Cheesecake & Co.",
+            "area": "Bandra West",
+            "match": null
+          },
+          {
+            "name": "Candies",
+            "area": "Bandra West",
+            "match": "Candies"
+          }
+        ],
+        "inCorpus": 2,
+        "notInCorpus": 2,
+        "reply": "Bandra West has several excellent spots for cheesecake, ranging from classic New York style to gourmet variations."
+      },
+      "grounded": {
+        "mode": "recommend",
+        "rawPickCount": 2,
+        "rawPickIds": [
+          "osm:node/2680338196",
+          "osm:node/4014530262"
+        ],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 2,
+        "finalMode": "recommend",
+        "reply": "I have identified a few places in Bandra West that might serve cheesecake."
+      }
+    },
+    {
+      "model": "gemini-3.1-flash-lite",
+      "id": "D2",
+      "density": "dense",
+      "query": "Good dermatologist near Andheri East",
+      "area": "Andheri East",
+      "categories": [
+        "health"
+      ],
+      "candidateCount": 40,
+      "ranAt": "2026-09-15T10:36:28.697Z",
+      "ungrounded": {
+        "count": 4,
+        "places": [
+          {
+            "name": "Dr. Rinky Kapoor - The Esthetic Clinics",
+            "area": "Andheri East",
+            "match": null
+          },
+          {
+            "name": "Dr. Apratim Goel - Cutis Skin Studio",
+            "area": "Andheri East",
+            "match": null
+          },
+          {
+            "name": "Dr. Shefali Trasi Nerurkar - Dr. Trasi's Clinic",
+            "area": "Andheri East",
+            "match": null
+          },
+          {
+            "name": "Skin & Shape Clinic",
+            "area": "Andheri East",
+            "match": null
+          }
+        ],
+        "inCorpus": 0,
+        "notInCorpus": 4,
+        "reply": "Here are some well-regarded dermatologists and skin clinics located in or near Andheri East, Mumbai."
+      },
+      "grounded": {
+        "mode": "search",
+        "rawPickCount": 0,
+        "rawPickIds": [],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 0,
+        "finalMode": "search",
+        "reply": "I could not find any specific dermatologists in the list provided for Andheri East."
+      }
+    },
+    {
+      "model": "gemini-3.1-flash-lite",
+      "id": "D3",
+      "density": "dense",
+      "query": "Where should I eat dinner in Colaba?",
+      "area": "Colaba",
+      "categories": [
+        "food"
+      ],
+      "candidateCount": 17,
+      "ranAt": "2026-09-15T10:36:34.463Z",
+      "ungrounded": {
+        "count": 5,
+        "places": [
+          {
+            "name": "Leopold Cafe",
+            "area": "Colaba",
+            "match": "Cafe Leopold"
+          },
+          {
+            "name": "Cafe Mondegar",
+            "area": "Colaba",
+            "match": "Cafe Mondegar"
+          },
+          {
+            "name": "The Table",
+            "area": "Colaba",
+            "match": "The Table"
+          },
+          {
+            "name": "Indigo Delicatessen",
+            "area": "Colaba",
+            "match": "Indigo Deli"
+          },
+          {
+            "name": "Bademiya",
+            "area": "Colaba",
+            "match": "Bademiya Restaurant"
+          }
+        ],
+        "inCorpus": 5,
+        "notInCorpus": 0,
+        "reply": "Colaba offers a fantastic mix of iconic historic cafes and upscale dining options. Here are five highly-rated spots for dinner in the area."
+      },
+      "grounded": {
+        "mode": "recommend",
+        "rawPickCount": 5,
+        "rawPickIds": [
+          "osm:node/669266696",
+          "osm:node/1973521830",
+          "osm:node/4047369646",
+          "osm:node/4048759441",
+          "osm:way/353393750"
+        ],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 5,
+        "finalMode": "recommend",
+        "reply": "Here are some dining options available in Colaba."
+      }
+    },
+    {
+      "model": "gemini-3.1-flash-lite",
+      "id": "D4",
+      "density": "dense",
+      "query": "Best chemist in Dadar that stays open late",
+      "area": "Dadar",
+      "categories": [
+        "pharmacy"
+      ],
+      "candidateCount": 12,
+      "ranAt": "2026-09-15T10:36:47.015Z",
+      "ungrounded": {
+        "count": 3,
+        "places": [
+          {
+            "name": "Noble Plus",
+            "area": "Dadar West",
+            "match": "Noble Plus"
+          },
+          {
+            "name": "Wellness Forever",
+            "area": "Dadar West",
+            "match": "Wellness Forever"
+          },
+          {
+            "name": "Dadar Medical Stores",
+            "area": "Dadar West",
+            "match": null
+          }
+        ],
+        "inCorpus": 2,
+        "notInCorpus": 1,
+        "reply": "These are some of the most reliable pharmacies in Dadar that operate late into the night or offer 24/7 service."
+      },
+      "grounded": {
+        "mode": "recommend",
+        "rawPickCount": 3,
+        "rawPickIds": [
+          "osm:node/12770285317",
+          "osm:node/13020281093",
+          "osm:node/6367147486"
+        ],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 3,
+        "finalMode": "recommend",
+        "reply": "Here are some pharmacy options in Dadar, noting that large chains like Apollo often have extended hours."
+      }
+    },
+    {
+      "model": "gemini-3.1-flash-lite",
+      "id": "D5",
+      "density": "dense",
+      "query": "Which is the best hospital in Borivali?",
+      "area": "Borivali",
+      "categories": [
+        "health"
+      ],
+      "candidateCount": 40,
+      "ranAt": "2026-09-15T10:36:56.000Z",
+      "ungrounded": {
+        "count": 5,
+        "places": [
+          {
+            "name": "Apex Multispeciality Hospital",
+            "area": "Borivali West",
+            "match": "Apex Multispeciality Hospitals"
+          },
+          {
+            "name": "HCG Apex Cancer Centre",
+            "area": "Borivali West",
+            "match": null
+          },
+          {
+            "name": "Karuna Hospital",
+            "area": "Borivali West",
+            "match": "Karuna Hospital"
+          },
+          {
+            "name": "Lotus Multispeciality Hospital",
+            "area": "Borivali West",
+            "match": "Lotus Multispeciality Hospital and Icu"
+          },
+          {
+            "name": "Sanjeevani Hospital",
+            "area": "Borivali West",
+            "match": "sanjeevan hospital"
+          }
+        ],
+        "inCorpus": 4,
+        "notInCorpus": 1,
+        "reply": "There are several well-regarded hospitals in Borivali, including Apex Multispeciality Hospital and Karuna Hospital, which are known for their comprehensive medical services."
+      },
+      "grounded": {
+        "mode": "recommend",
+        "rawPickCount": 5,
+        "rawPickIds": [
+          "osm:node/7044322978",
+          "osm:node/1496182480",
+          "osm:node/1939199158",
+          "osm:node/7044610739",
+          "osm:node/7044797317"
+        ],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 5,
+        "finalMode": "recommend",
+        "reply": "These hospitals are located in Borivali and offer various medical services."
+      }
+    },
+    {
+      "model": "gemini-3.1-flash-lite",
+      "id": "D6",
+      "density": "dense",
+      "query": "Cleanest public toilet in Andheri East",
+      "area": "Andheri East",
+      "categories": [
+        "toilets"
+      ],
+      "candidateCount": 40,
+      "ranAt": "2026-09-15T10:37:03.436Z",
+      "ungrounded": {
+        "count": 3,
+        "places": [
+          {
+            "name": "Andheri Railway Station Public Toilet",
+            "area": "Andheri East",
+            "match": "public toilet"
+          },
+          {
+            "name": "Mumbai Metro Line 1 Station Toilets",
+            "area": "Andheri East",
+            "match": "Mumbai Clinic"
+          },
+          {
+            "name": "Chhatrapati Shivaji Maharaj International Airport Terminal 2",
+            "area": "Andheri East",
+            "match": "National Hospital"
+          }
+        ],
+        "inCorpus": 3,
+        "notInCorpus": 0,
+        "reply": "Public toilets within Metro stations and the airport in Andheri East are generally the best maintained. Railway station facilities are available but hygiene levels can vary significantly."
+      },
+      "grounded": {
+        "mode": "search",
+        "rawPickCount": 0,
+        "rawPickIds": [],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 0,
+        "finalMode": "search",
+        "reply": "I cannot verify the cleanliness of these facilities, but here are the public toilets registered in the Andheri East area."
+      }
+    },
+    {
+      "model": "gemini-3.5-flash",
+      "id": "S1",
+      "density": "sparse",
+      "query": "Where can I find working drinking water in Powai?",
+      "area": "Powai",
+      "categories": [
+        "drinking_water"
+      ],
+      "candidateCount": 28,
+      "ranAt": "2026-09-15T10:37:31.383Z",
+      "ungrounded": {
+        "count": 5,
+        "places": [
+          {
+            "name": "Heritage Garden Water Cooler",
+            "area": "Hiranandani Gardens, Powai",
+            "match": "Heritage"
+          },
+          {
+            "name": "Powai Lake Promenade Public Drinking Water Fountain",
+            "area": "Powai",
+            "match": "Drinking water"
+          },
+          {
+            "name": "Galleria Mall Drinking Water Station",
+            "area": "Hiranandani Gardens, Powai",
+            "match": "Drinking water"
+          },
+          {
+            "name": "IIT Bombay Main Gate Public Water Booth",
+            "area": "Powai",
+            "match": "Bombay Hospital"
+          },
+          {
+            "name": "Supreme Business Park Public Water Dispenser",
+            "area": "Supreme City, Powai",
+            "match": null
+          }
+        ],
+        "inCorpus": 4,
+        "notInCorpus": 1,
+        "reply": "Here are some locations in Powai where you can find working public drinking water facilities and coolers."
+      },
+      "grounded": {
+        "mode": "search",
+        "rawPickCount": 0,
+        "rawPickIds": [],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 0,
+        "finalMode": "search",
+        "reply": "Searching for working drinking water facilities in Powai."
+      }
+    },
+    {
+      "model": "gemini-3.5-flash",
+      "id": "S2",
+      "density": "sparse",
+      "query": "Is there a public drinking water fountain in Bandra West?",
+      "area": "Bandra West",
+      "categories": [
+        "drinking_water"
+      ],
+      "candidateCount": 0,
+      "ranAt": "2026-09-15T10:37:49.798Z",
+      "ungrounded": {
+        "count": 0,
+        "places": [],
+        "inCorpus": 0,
+        "notInCorpus": 0,
+        "reply": "I do not have records of any specific, functional public drinking water fountains in Bandra West."
+      },
+      "grounded": {
+        "mode": "search",
+        "rawPickCount": 0,
+        "rawPickIds": [],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 0,
+        "finalMode": "search",
+        "reply": "Searching for public drinking water fountains in Bandra West."
+      }
+    },
+    {
+      "model": "gemini-3.5-flash",
+      "id": "S3",
+      "density": "sparse",
+      "query": "Best place to drink water for free in Chembur",
+      "area": "Chembur",
+      "categories": [
+        "drinking_water"
+      ],
+      "candidateCount": 1,
+      "ranAt": "2026-09-15T10:38:26.846Z",
+      "ungrounded": {
+        "count": 3,
+        "places": [
+          {
+            "name": "Chembur Railway Station Drinking Water Fountain",
+            "area": "Chembur East",
+            "match": "Drinking water"
+          },
+          {
+            "name": "Kala Talao Park Pyau",
+            "area": "Chembur West",
+            "match": null
+          },
+          {
+            "name": "Dr. Ambedkar Garden Drinking Water Station",
+            "area": "Chembur East",
+            "match": "Drinking water"
+          }
+        ],
+        "inCorpus": 2,
+        "notInCorpus": 1,
+        "reply": "Here are a few public places and parks in Chembur where free drinking water (pyaus/fountains) is available for commuters and visitors."
+      },
+      "grounded": {
+        "mode": "recommend",
+        "rawPickCount": 1,
+        "rawPickIds": [
+          "osm:node/12293013067"
+        ],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 1,
+        "finalMode": "recommend",
+        "reply": "I found a free drinking water option in Chembur."
+      }
+    },
+    {
+      "model": "gemini-3.5-flash",
+      "id": "S4",
+      "density": "sparse",
+      "query": "Where is there shade or shelter to sit in Dadar?",
+      "area": "Dadar",
+      "categories": [
+        "shelter"
+      ],
+      "candidateCount": 0,
+      "ranAt": "2026-09-15T10:38:58.459Z",
+      "ungrounded": {
+        "count": 5,
+        "places": [
+          {
+            "name": "Shivaji Park Ground (under the tree canopy)",
+            "area": "Dadar West",
+            "match": null
+          },
+          {
+            "name": "Veer Savarkar Udyan",
+            "area": "Dadar West",
+            "match": null
+          },
+          {
+            "name": "Five Gardens (Mancherji Joshi Pentangular Park)",
+            "area": "Dadar East (bordering Dadar)",
+            "match": null
+          },
+          {
+            "name": "Pramod Mahajan Kala Park",
+            "area": "Dadar West (near Dadar-Prabhadevi border)",
+            "match": null
+          },
+          {
+            "name": "Dr. Babasaheb Ambedkar Smarak (Chaityabhoomi garden area)",
+            "area": "Dadar West",
+            "match": null
+          }
+        ],
+        "inCorpus": 0,
+        "notInCorpus": 5,
+        "reply": "Here are some parks and open spaces in and around Dadar that offer shaded areas or benches under trees to sit and rest."
+      },
+      "grounded": {
+        "mode": "search",
+        "rawPickCount": 0,
+        "rawPickIds": [],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 0,
+        "finalMode": "search",
+        "reply": "Searching for public shelters and seating in Dadar."
+      }
+    },
+    {
+      "model": "gemini-3.5-flash",
+      "id": "S5",
+      "density": "sparse",
+      "query": "Good public benches to sit on in Worli",
+      "area": "Worli",
+      "categories": [
+        "bench"
+      ],
+      "candidateCount": 0,
+      "ranAt": "2026-09-15T10:40:43.038Z",
+      "ungrounded": {
+        "count": 3,
+        "places": [
+          {
+            "name": "Worli Sea Face Promenade",
+            "area": "Worli",
+            "match": null
+          },
+          {
+            "name": "Worli Fort Garden",
+            "area": "Worli",
+            "match": null
+          },
+          {
+            "name": "Bhagwan Buddha Garden",
+            "area": "Worli",
+            "match": null
+          }
+        ],
+        "inCorpus": 0,
+        "notInCorpus": 3,
+        "reply": "Here are some great spots with public benches to sit and enjoy the breeze in Worli, Mumbai."
+      },
+      "grounded": {
+        "mode": "search",
+        "rawPickCount": 0,
+        "rawPickIds": [],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 0,
+        "finalMode": "search",
+        "reply": "Searching for public benches and seating in Worli."
+      }
+    },
+    {
+      "model": "gemini-3.5-flash",
+      "id": "S6",
+      "density": "sparse",
+      "query": "Which is the best police station in Vile Parle?",
+      "area": "Vile Parle",
+      "categories": [
+        "police"
+      ],
+      "candidateCount": 3,
+      "ranAt": "2026-09-15T10:41:46.353Z",
+      "ungrounded": {
+        "count": 1,
+        "places": [
+          {
+            "name": "Vile Parle Police Station",
+            "area": "Vile Parle East",
+            "match": "POLICE STATION"
+          }
+        ],
+        "inCorpus": 1,
+        "notInCorpus": 0,
+        "reply": "The primary and most well-known police station servicing this area is the Vile Parle Police Station, located in Vile Parle East."
+      },
+      "grounded": {
+        "error": "http_503",
+        "detail": "{\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\n    \"status\": \"UNAVAILABLE\"\n  }\n}\n"
+      }
+    },
+    {
+      "model": "gemini-3.5-flash",
+      "id": "D1",
+      "density": "dense",
+      "query": "Best cheesecake in Bandra West",
+      "area": "Bandra West",
+      "categories": [
+        "food"
+      ],
+      "candidateCount": 40,
+      "ranAt": "2026-09-15T10:43:09.376Z",
+      "ungrounded": {
+        "count": 5,
+        "places": [
+          {
+            "name": "Theobroma",
+            "area": "Bandra West",
+            "match": "Theobroma"
+          },
+          {
+            "name": "Bastian",
+            "area": "Bandra West",
+            "match": "Bastian At The Top"
+          },
+          {
+            "name": "Poetry by Love and Cheesecake",
+            "area": "Bandra West",
+            "match": "Poetry by Love and Cheesecake"
+          },
+          {
+            "name": "Daniel Patissier",
+            "area": "Bandra West",
+            "match": null
+          },
+          {
+            "name": "Sassy Teaspoon",
+            "area": "Bandra West",
+            "match": "The Sassy Teaspoon"
+          }
+        ],
+        "inCorpus": 4,
+        "notInCorpus": 1,
+        "reply": "Here are some of the best places to enjoy delicious cheesecake in Bandra West, Mumbai."
+      },
+      "grounded": {
+        "mode": "recommend",
+        "rawPickCount": 4,
+        "rawPickIds": [
+          "osm:node/2680338196",
+          "osm:node/3645808418",
+          "osm:node/4014530262",
+          "osm:node/4198985391"
+        ],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 4,
+        "finalMode": "recommend",
+        "reply": "I have selected options in Bandra West that are likely to serve cheesecake based on their names."
+      }
+    },
+    {
+      "model": "gemini-3.5-flash",
+      "id": "D2",
+      "density": "dense",
+      "query": "Good dermatologist near Andheri East",
+      "area": "Andheri East",
+      "categories": [
+        "health"
+      ],
+      "candidateCount": 40,
+      "ranAt": "2026-09-15T10:44:23.092Z",
+      "ungrounded": {
+        "count": 5,
+        "places": [
+          {
+            "name": "Dr. Tvacha Clinic",
+            "area": "Andheri East",
+            "match": null
+          },
+          {
+            "name": "Skin & Hair Clinic (Dr. Shaurya Rohatgi)",
+            "area": "Andheri East",
+            "match": null
+          },
+          {
+            "name": "Clear Skin Hair & Laser Clinic",
+            "area": "Andheri East",
+            "match": null
+          },
+          {
+            "name": "Kaya Clinic",
+            "area": "Andheri East",
+            "match": null
+          },
+          {
+            "name": "Dr. Shehnaz Arsiwala's Skin Clinic",
+            "area": "Andheri East",
+            "match": null
+          }
+        ],
+        "inCorpus": 0,
+        "notInCorpus": 5,
+        "reply": "Here are some highly-rated dermatologists and skin clinics located in and around Andheri East, Mumbai."
+      },
+      "grounded": {
+        "mode": "search",
+        "rawPickCount": 0,
+        "rawPickIds": [],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 0,
+        "finalMode": "search",
+        "reply": "I could not find any specific dermatologists in the provided list. I am searching for clinics and doctors in Andheri East instead."
+      }
+    },
+    {
+      "model": "gemini-3.5-flash",
+      "id": "D3",
+      "density": "dense",
+      "query": "Where should I eat dinner in Colaba?",
+      "area": "Colaba",
+      "categories": [
+        "food"
+      ],
+      "candidateCount": 17,
+      "ranAt": "2026-09-15T10:44:40.482Z",
+      "ungrounded": {
+        "count": 5,
+        "places": [
+          {
+            "name": "The Table",
+            "area": "Colaba",
+            "match": "The Table"
+          },
+          {
+            "name": "Indigo Deli",
+            "area": "Colaba",
+            "match": "Indigo Deli"
+          },
+          {
+            "name": "Leopold Cafe",
+            "area": "Colaba",
+            "match": "Cafe Leopold"
+          },
+          {
+            "name": "Delhi Darbar",
+            "area": "Colaba",
+            "match": "Delhi Darbar"
+          },
+          {
+            "name": "Bademiya",
+            "area": "Colaba",
+            "match": "Bademiya Restaurant"
+          }
+        ],
+        "inCorpus": 5,
+        "notInCorpus": 0,
+        "reply": "Here are five popular dining options in Colaba, Mumbai, offering a variety of cuisines ranging from fine dining to iconic street-style food."
+      },
+      "grounded": {
+        "mode": "recommend",
+        "rawPickCount": 5,
+        "rawPickIds": [
+          "osm:node/4048759441",
+          "osm:node/1973521830",
+          "osm:node/4048759442",
+          "osm:node/9915112218",
+          "osm:node/6428468685"
+        ],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 5,
+        "finalMode": "recommend",
+        "reply": "Here are some dining options in Colaba based on your list."
+      }
+    },
+    {
+      "model": "gemini-3.5-flash",
+      "id": "D4",
+      "density": "dense",
+      "query": "Best chemist in Dadar that stays open late",
+      "area": "Dadar",
+      "categories": [
+        "pharmacy"
+      ],
+      "candidateCount": 12,
+      "ranAt": "2026-09-15T10:45:04.262Z",
+      "ungrounded": {
+        "count": 5,
+        "places": [
+          {
+            "name": "Pritam Chemist",
+            "area": "Dadar East",
+            "match": "Chemist"
+          },
+          {
+            "name": "Nobel Plus Chemist & Druggist",
+            "area": "Dadar West",
+            "match": "Chemist"
+          },
+          {
+            "name": "Mahavir Medical & General Stores",
+            "area": "Dadar West",
+            "match": "Mahavir Hospital"
+          },
+          {
+            "name": "Wellness Forever",
+            "area": "Dadar West",
+            "match": "Wellness Forever"
+          },
+          {
+            "name": "National Chemist",
+            "area": "Dadar East",
+            "match": "National Chemist"
+          }
+        ],
+        "inCorpus": 5,
+        "notInCorpus": 0,
+        "reply": "Here are some of the best and most reliable chemists in Dadar that stay open late or operate 24/7 to serve your medical needs."
+      },
+      "grounded": {
+        "mode": "recommend",
+        "rawPickCount": 5,
+        "rawPickIds": [
+          "osm:node/12770185627",
+          "osm:node/12770285317",
+          "osm:node/13295721535",
+          "osm:node/13022352226",
+          "osm:node/13020281093"
+        ],
+        "outOfSetCount": 0,
+        "outOfSetIds": [],
+        "keptCount": 5,
+        "finalMode": "recommend",
+        "reply": "Here are some pharmacies in Dadar that may be open late based on their names. Please verify their current hours directly."
+      }
+    },
+    {
+      "model": "gemini-3.5-flash",
+      "id": "D5",
+      "density": "dense",
+      "query": "Which is the best hospital in Borivali?",
+      "area": "Borivali",
+      "categories": [
+        "health"
+      ],
+      "candidateCount": 40,
+      "ranAt": "2026-09-15T10:45:20.428Z",
+      "ungrounded": {
+        "error": "http_429",
+        "detail": "{\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota ex"
+      }
+    }
+  ]
+}

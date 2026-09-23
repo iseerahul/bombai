@@ -1,0 +1,854 @@
+/**
+ * Cloudflare Worker — the app's only server component.
+ *
+ * It exists for exactly two reasons:
+ *   1. To hold the Gemini API key, which must never be in a browser bundle.
+ *   2. To store community reports, which are inherently shared state.
+ *
+ * What it deliberately does NOT do: log request bodies, set cookies, issue
+ * identifiers, or store IP addresses. Rate limiting uses a salted hash whose
+ * salt rotates daily, so yesterday's buckets cannot be linked to today's.
+ */
+
+import {
+  type Env,
+  SERVICE_BBOX,
+  checkRateLimit,
+  corsHeaders,
+  isFiniteLat,
+  isFiniteLon,
+  json,
+  rateBucket,
+  roundCoord,
+} from './lib'
+import { routeHangouts, sweepHangouts } from './hangouts'
+import { routeAuth, sweepSessions } from './auth'
+import { routeSocial, sweepSocial } from './social'
+import { routeRooms, sweepRooms } from './rooms'
+import { routeEvents, sweepEvents } from './events'
+import { routeGeocode } from './geocode'
+import { routeBoard } from './board'
+import { routeDestinations } from './destinations'
+
+export type { Env }
+
+/**
+ * Models to try, in order.
+ *
+ * The free tier's request cap is PER DAY PER MODEL (quotaId
+ * `GenerateRequestsPerDayPerProjectPerModel-FreeTier`), and for this project it
+ * is only 20/day. Listing more than one model therefore multiplies the usable
+ * daily allowance: when the first is exhausted we fall through to the next
+ * instead of failing.
+ *
+ * Both were verified to support `responseSchema` structured output. Don't add a
+ * model here without checking that — several current Gemini models reject the
+ * structured-output request with a 400, and older 2.x models are retired.
+ */
+const GEMINI_MODELS = ['gemini-3.1-flash-lite', 'gemini-3.5-flash']
+
+const geminiUrl = (model: string) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
+
+/** Report lifetimes. Flooding is short by design — see the note in handleCreateReport. */
+const TTL_MS = {
+  flooded: 8 * 60 * 60 * 1000,
+  clear: 8 * 60 * 60 * 1000,
+  working: 30 * 24 * 60 * 60 * 1000,
+  broken: 30 * 24 * 60 * 60 * 1000,
+  closed: 30 * 24 * 60 * 60 * 1000,
+} as const
+
+type ReportKind = keyof typeof TTL_MS
+
+const RATE_LIMITS = {
+  ask: { max: 40, windowMs: 60 * 60 * 1000 },
+  report: { max: 20, windowMs: 60 * 60 * 1000 },
+  vote: { max: 100, windowMs: 60 * 60 * 1000 },
+  // ORS free tier is 2,000/day overall, so keep any one visitor well under it.
+  route: { max: 60, windowMs: 60 * 60 * 1000 },
+} as const
+
+// ---------------------------------------------------------------------------
+// /api/ask
+// ---------------------------------------------------------------------------
+
+const RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    mode: { type: 'STRING', enum: ['search', 'recommend', 'trip'] },
+    stops: {
+      type: 'ARRAY',
+      maxItems: 8,
+      items: {
+        type: 'OBJECT',
+        properties: {
+          kind: { type: 'STRING', enum: ['category', 'place', 'origin'] },
+          category: { type: 'STRING' },
+          name: {
+            type: 'STRING',
+            // maxLength is load-bearing, not decoration. Without it the model
+            // reliably degenerates here, appending platform/direction/terminus
+            // qualifiers to a station name until it exhausts maxOutputTokens
+            // and the JSON truncates mid-string. Prompt instructions alone did
+            // not stop it; a hard schema bound does.
+            maxLength: 40,
+            description:
+              'Short place name only, e.g. "MIDC" or "Andheri". No platform, gate, direction, terminus or line details.',
+          },
+          area: { type: 'STRING', maxLength: 40 },
+        },
+        required: ['kind'],
+      },
+    },
+    categories: { type: 'ARRAY', items: { type: 'STRING' } },
+    area: { type: 'STRING' },
+    text: { type: 'STRING' },
+    filters: {
+      type: 'OBJECT',
+      properties: {
+        working: { type: 'BOOLEAN' },
+        wheelchair: { type: 'BOOLEAN' },
+        free: { type: 'BOOLEAN' },
+        openNow: { type: 'BOOLEAN' },
+      },
+    },
+    picks: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: { id: { type: 'STRING' }, why: { type: 'STRING' } },
+        required: ['id', 'why'],
+      },
+    },
+    reply: { type: 'STRING' },
+    caveat: { type: 'STRING' },
+  },
+  required: ['mode', 'reply'],
+}
+
+const SYSTEM_PROMPT = `You interpret questions asked to a map of Mumbai's public utilities.
+
+You return JSON only.
+
+CATEGORIES (use these exact keys in "categories"):
+  drinking_water - drinking water fountains, piyaus, taps
+  toilets        - public toilets, washrooms
+  health         - hospitals, clinics, doctors
+  pharmacy       - chemists, medical stores
+  food           - restaurants, cafes, bakeries, dessert places
+  atm            - ATMs and banks
+  police         - police stations
+  transit        - railway stations, bus depots
+  shelter        - shelters, shaded cover
+  bench          - benches and public seating
+  flood_spot     - places known to waterlog during monsoon
+
+TWO MODES:
+
+1. mode "search" — the user wants to FIND places.
+   Set "categories", optionally "area" (a Mumbai locality named in the question,
+   e.g. "Andheri East"), optionally "text" (a specific thing to match in place
+   names, e.g. "cheesecake" or "dermatologist"), and "filters":
+     working    - they want something not reported broken
+     wheelchair - they need step-free access
+     free       - they don't want to pay
+     openNow    - they need it open right now
+   Only set a filter when the question actually implies it.
+
+2. mode "recommend" — the user wants a JUDGEMENT ("best", "good", "worth it").
+   You are given a CANDIDATE list. Choose up to 5 entries FROM THAT LIST ONLY and
+   put their exact "id" values in "picks", each with a short "why".
+
+   ABSOLUTE RULE: every id in "picks" MUST appear in the candidate list given to
+   you. Never invent a place. Never use a name that is not in the list. If the
+   candidate list is empty or nothing fits, return mode "search" instead.
+
+   Your "why" may only reason from the name and category shown. You have no
+   review data, no ratings and no visit history. Do not claim popularity,
+   quality, prices, or that you have information you were not given. Phrase
+   picks as possibilities ("name suggests it specialises in..."), never as
+   verified facts.
+
+3. mode "trip" — the user wants to go somewhere, with stops along the way.
+   Triggers: "I want to go to X but first Y", "on the way to", "before I head to",
+   "then", "after that", any journey with more than one destination.
+
+   Fill "stops" as an ORDERED list, in the order the user will visit them.
+   Each stop is one of:
+     kind "origin"   - where they start ("from here", "from my location")
+     kind "category" - a type of place to pick later, e.g. somewhere to eat.
+                       Set "category" to a category key. Set "area" if they named one.
+     kind "place"    - a specific named place. Set "category" to the best-matching
+                       key (transit for stations) and "area" if given.
+
+                       "name" MUST be the SHORT name, three words at most, copied
+                       from how the user said it — "MIDC", "Andheri", "Ghatkopar".
+                       NEVER add platform numbers, gate numbers, directions,
+                       terminus names, line names or any parenthetical detail.
+                       Write "MIDC", never "MIDC Andheri Metro Station (Gate 2)
+                       Platform 1 towards Dahisar East". The app matches this
+                       against its own map data, so extra words make it fail.
+
+   The FINAL stop is the destination. Do not add stops the user did not ask for.
+   If they say "from here" or imply starting where they are, make the FIRST stop
+   kind "origin".
+
+   Example — "I want to take the metro at MIDC Andheri but first I want to eat":
+     stops: [
+       {kind:"origin"},
+       {kind:"category", category:"food"},
+       {kind:"place", name:"MIDC", category:"transit", area:"Andheri East"}
+     ]
+
+"reply" is one or two short, plain sentences shown above the results. Be direct.
+No greetings, no filler, no emoji.`
+
+/**
+ * Parse JSON that may have been truncated mid-generation.
+ *
+ * Gemini reliably degenerates on the itinerary `name` field — it appends
+ * platform/direction/terminus qualifiers to a station name until it exhausts
+ * maxOutputTokens, leaving the JSON cut off inside a string. Neither prompt
+ * instructions nor the schema's `maxLength` stopped it (both were tried and
+ * ignored), so the pragmatic fix is to salvage the valid prefix: every stop
+ * before the runaway one is intact, and the runaway name gets clamped later.
+ *
+ * Returns null if nothing usable can be recovered.
+ */
+function parseLoosely(text: string): Record<string, unknown> | null {
+  try {
+    return JSON.parse(text)
+  } catch {
+    /* fall through to repair */
+  }
+
+  const closers: string[] = []
+  let inString = false
+  let escaped = false
+
+  for (const ch of text) {
+    if (escaped) {
+      escaped = false
+      continue
+    }
+    if (ch === '\\') {
+      if (inString) escaped = true
+      continue
+    }
+    if (ch === '"') {
+      inString = !inString
+      continue
+    }
+    if (inString) continue
+
+    if (ch === '{') closers.push('}')
+    else if (ch === '[') closers.push(']')
+    else if (ch === '}' || ch === ']') closers.pop()
+  }
+
+  let repaired = text
+  if (escaped) repaired = repaired.slice(0, -1) // don't end on a dangling escape
+  if (inString) repaired += '"'
+  for (let i = closers.length - 1; i >= 0; i--) repaired += closers[i]
+
+  try {
+    return JSON.parse(repaired)
+  } catch {
+    return null
+  }
+}
+
+interface AskBody {
+  question?: unknown
+  candidates?: unknown
+}
+
+interface Candidate {
+  id: string
+  name: string
+  category: string
+  detail?: string
+}
+
+async function handleAsk(request: Request, env: Env): Promise<Response> {
+  const bucket = await rateBucket(request, env, 'ask')
+  const limit = await checkRateLimit(env, bucket, RATE_LIMITS.ask)
+  if (!limit.ok) {
+    return json({ error: 'rate_limited' }, 429, {
+      'Retry-After': String(limit.retryAfterS),
+    })
+  }
+
+  let body: AskBody
+  try {
+    body = await request.json()
+  } catch {
+    return json({ error: 'bad_json' }, 400)
+  }
+
+  const question = typeof body.question === 'string' ? body.question.trim() : ''
+  if (!question) return json({ error: 'missing_question' }, 400)
+  if (question.length > 500) return json({ error: 'question_too_long' }, 400)
+
+  const candidates: Candidate[] = Array.isArray(body.candidates)
+    ? (body.candidates as Candidate[])
+        .filter(
+          (c) => c && typeof c.id === 'string' && typeof c.name === 'string'
+        )
+        .slice(0, 40)
+    : []
+
+  const candidateBlock = candidates.length
+    ? candidates
+        .map(
+          (c) =>
+            `- id: ${c.id} | name: ${c.name} | category: ${c.category}` +
+            (c.detail ? ` | ${c.detail}` : '')
+        )
+        .join('\n')
+    : '(none)'
+
+  const userPrompt = `QUESTION: ${question}\n\nCANDIDATES:\n${candidateBlock}`
+
+  let geminiRes: Response | null = null
+  let lastRetryAfterS = 30
+
+  for (const model of GEMINI_MODELS) {
+    let attempt: Response
+    try {
+      attempt = await fetch(geminiUrl(model), {
+        method: 'POST',
+        // Key travels as a header, not a query parameter, so it can't end up in
+        // an intermediary's URL logs.
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': env.GEMINI_API_KEY,
+        },
+        body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: RESPONSE_SCHEMA,
+          // Not lower: very low temperatures make the repetition loop described
+          // below more likely, and this task has little need for determinism.
+          temperature: 0.6,
+          // Thinking off: this is structured extraction, not reasoning, and
+          // Gemini 2.5 charges thinking against maxOutputTokens.
+          thinkingConfig: { thinkingBudget: 0 },
+          // Generous ceiling. Observed failure mode: the model fell into a
+          // repetition loop expanding a station name with platform/direction
+          // qualifiers until it hit MAX_TOKENS and the JSON was truncated
+          // mid-string. The prompt now forbids that; this is the safety net.
+          maxOutputTokens: 2048,
+        },
+      }),
+    })
+    } catch {
+      continue // network problem with this model; try the next
+    }
+
+    if (attempt.ok) {
+      geminiRes = attempt
+      break
+    }
+
+    if (attempt.status === 429) {
+      // Daily-per-model quota exhausted. Remember how long to advise waiting,
+      // then try the next model, which has its own separate allowance.
+      try {
+        const errBody = (await attempt.json()) as {
+          error?: { details?: { '@type'?: string; retryDelay?: string }[] }
+        }
+        const info = errBody.error?.details?.find((d) => d['@type']?.includes('RetryInfo'))
+        const seconds = Number.parseFloat(info?.retryDelay ?? '')
+        if (Number.isFinite(seconds) && seconds > 0) lastRetryAfterS = Math.ceil(seconds)
+      } catch {
+        /* keep the default */
+      }
+      continue
+    }
+
+    // A non-quota failure (400, 404, 500) won't be fixed by another model
+    // attempt in the same way, but trying the fallback is cheap and harmless.
+    geminiRes = attempt
+  }
+
+  if (!geminiRes) {
+    return json({ error: 'upstream_unreachable' }, 502)
+  }
+
+  if (!geminiRes.ok) {
+    if (geminiRes.status === 429) {
+      // Every model's daily free allowance is spent. Note for the client: this
+      // is a per-DAY cap that resets at midnight Pacific, so the retry hint
+      // Google returns (often "1s") is misleading and must not be shown as-is.
+      return json(
+        { error: 'upstream_rate_limited', retryAfterS: lastRetryAfterS, scope: 'daily' },
+        429,
+        { 'Retry-After': String(lastRetryAfterS) }
+      )
+    }
+    return json({ error: 'upstream_error', status: geminiRes.status }, 502)
+  }
+
+  const payload = (await geminiRes.json()) as {
+    candidates?: {
+      content?: { parts?: { text?: string }[] }
+      finishReason?: string
+    }[]
+    promptFeedback?: { blockReason?: string }
+  }
+
+  const text = payload.candidates?.[0]?.content?.parts?.[0]?.text
+  if (!text) {
+    // Surface why. An empty completion has several very different causes —
+    // token exhaustion, a safety block, a schema rejection — and they need
+    // different fixes, so don't collapse them into one opaque 502.
+    return json(
+      {
+        error: 'empty_completion',
+        finishReason: payload.candidates?.[0]?.finishReason ?? null,
+        blockReason: payload.promptFeedback?.blockReason ?? null,
+      },
+      502
+    )
+  }
+
+  const parsed = parseLoosely(text)
+  if (!parsed) {
+    return json(
+      {
+        error: 'unparsable_completion',
+        finishReason: payload.candidates?.[0]?.finishReason ?? null,
+        length: text.length,
+        snippet: text.slice(0, 300),
+      },
+      502
+    )
+  }
+
+  // --- Itinerary sanitisation ----------------------------------------------
+  // Belt and braces for the repetition loop described above: even with the
+  // prompt fixed, a long generated name would break place matching downstream,
+  // so clamp it here rather than trusting the model to behave.
+  if (parsed.mode === 'trip' && Array.isArray(parsed.stops)) {
+    parsed.stops = (parsed.stops as Record<string, unknown>[])
+      .slice(0, 8)
+      .map((stop) => {
+        const name = typeof stop.name === 'string' ? stop.name.trim() : undefined
+        return {
+          ...stop,
+          ...(name
+            ? {
+                // Keep the leading words: a runaway always appends qualifiers,
+                // so the real name is at the front. The client then tries
+                // progressively shorter prefixes when matching, which is what
+                // actually rescues "MIDC Andheri Metro Station" → "MIDC - Andheri".
+                name: name.split(/\s+/).slice(0, 5).join(' ').slice(0, 60),
+              }
+            : {}),
+        }
+      })
+  }
+
+  // --- The grounding filter -------------------------------------------------
+  // This is the guarantee that the model cannot invent a place. Any id it
+  // returns that we did not offer is discarded here, server-side, before the
+  // browser ever sees it.
+  if (parsed.mode === 'recommend') {
+    const allowed = new Set(candidates.map((c) => c.id))
+    const picks = Array.isArray(parsed.picks) ? parsed.picks : []
+    const kept = picks.filter(
+      (p): p is { id: string; why: string } =>
+        !!p && typeof p.id === 'string' && allowed.has(p.id)
+    )
+
+    if (kept.length === 0) {
+      // Everything was hallucinated or nothing fit. Degrade to a plain search
+      // rather than returning an empty recommendation.
+      return json({
+        mode: 'search',
+        categories: Array.isArray(parsed.categories) ? parsed.categories : [],
+        area: typeof parsed.area === 'string' ? parsed.area : null,
+        filters: {},
+        reply:
+          typeof parsed.reply === 'string'
+            ? parsed.reply
+            : "I couldn't pick confidently, so here's everything nearby.",
+      })
+    }
+
+    parsed.picks = kept
+  }
+
+  return json(parsed)
+}
+
+// ---------------------------------------------------------------------------
+// /api/route  — walking directions via OpenRouteService
+// ---------------------------------------------------------------------------
+
+/**
+ * The one endpoint that genuinely receives user coordinates.
+ *
+ * Everything else in this app searches on-device precisely so locations never
+ * travel. Routing cannot work that way — the road graph is far too large to
+ * ship to a phone — so this is a deliberate, disclosed exception. What we can
+ * still control, and do:
+ *   - ORS never sees the visitor's IP; it only ever talks to this Worker.
+ *   - No identifier is attached, and consecutive trips are unlinkable.
+ *   - Coordinates are never written to the database or logged.
+ *   - It is only ever called when someone explicitly plans a trip.
+ *
+ * The privacy dialog states this plainly. Do not weaken that wording.
+ */
+async function handleRoute(request: Request, env: Env): Promise<Response> {
+  if (!env.ORS_API_KEY) {
+    // Explicit, so the client can fall back to straight lines and say why.
+    return json({ error: 'routing_not_configured' }, 503)
+  }
+
+  const bucket = await rateBucket(request, env, 'route')
+  const limit = await checkRateLimit(env, bucket, RATE_LIMITS.route)
+  if (!limit.ok) {
+    return json({ error: 'rate_limited' }, 429, {
+      'Retry-After': String(limit.retryAfterS),
+    })
+  }
+
+  let body: { coordinates?: unknown; profile?: unknown }
+  try {
+    body = await request.json()
+  } catch {
+    return json({ error: 'bad_json' }, 400)
+  }
+
+  const raw = body.coordinates
+  if (!Array.isArray(raw) || raw.length < 2 || raw.length > 10) {
+    return json({ error: 'need_2_to_10_coordinates' }, 400)
+  }
+
+  const coordinates: [number, number][] = []
+  for (const pair of raw) {
+    if (!Array.isArray(pair) || pair.length !== 2) {
+      return json({ error: 'bad_coordinate_pair' }, 400)
+    }
+    const [lon, lat] = pair.map(Number)
+    if (!isFiniteLat(lat) || !isFiniteLon(lon)) {
+      return json({ error: 'bad_coordinate_values' }, 400)
+    }
+    // Keep this a Mumbai app: refuse anything outside the served area rather
+    // than spending the shared ORS quota on arbitrary world routes.
+    if (
+      lat < SERVICE_BBOX.south ||
+      lat > SERVICE_BBOX.north ||
+      lon < SERVICE_BBOX.west ||
+      lon > SERVICE_BBOX.east
+    ) {
+      return json({ error: 'outside_service_area' }, 400)
+    }
+    coordinates.push([lon, lat])
+  }
+
+  /*
+   * OpenRouteService profiles we expose. Public transport is deliberately NOT
+   * here: ORS has no transit profile, and Mumbai publishes no open timetable,
+   * so a "transit" route is composed client-side from walk legs plus the rail
+   * network and labelled as an estimate. See src/nav/transit.ts.
+   */
+  const PROFILES = ['foot-walking', 'driving-car', 'cycling-regular'] as const
+  const profile = (PROFILES as readonly string[]).includes(String(body.profile))
+    ? String(body.profile)
+    : 'foot-walking'
+
+  let res: Response
+  try {
+    res = await fetch(
+      `https://api.openrouteservice.org/v2/directions/${profile}/geojson`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: env.ORS_API_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ coordinates, instructions: false }),
+        signal: AbortSignal.timeout(20_000),
+      }
+    )
+  } catch {
+    return json({ error: 'routing_unreachable' }, 502)
+  }
+
+  if (!res.ok) {
+    let detail = ''
+    try {
+      const errBody = (await res.json()) as { error?: { message?: string } | string }
+      detail =
+        typeof errBody.error === 'string'
+          ? errBody.error
+          : (errBody.error?.message ?? '')
+    } catch {
+      /* body wasn't JSON; the status alone is enough to act on */
+    }
+    // 2010 = "no route found near given coordinate", which is a normal outcome
+    // for a pin in the middle of a block, not a server failure.
+    const status = res.status === 429 ? 429 : res.status === 404 ? 404 : 502
+    return json({ error: 'routing_failed', status: res.status, detail }, status)
+  }
+
+  const geo = (await res.json()) as {
+    features?: {
+      geometry?: { coordinates?: [number, number][] }
+      properties?: {
+        summary?: { distance?: number; duration?: number }
+        segments?: { distance?: number; duration?: number }[]
+      }
+    }[]
+  }
+
+  const feature = geo.features?.[0]
+  if (!feature?.geometry?.coordinates?.length) {
+    return json({ error: 'empty_route' }, 502)
+  }
+
+  // Return only what the map needs. ORS responses carry a lot of extra detail.
+  return json({
+    coordinates: feature.geometry.coordinates,
+    distanceM: Math.round(feature.properties?.summary?.distance ?? 0),
+    durationS: Math.round(feature.properties?.summary?.duration ?? 0),
+    legs: (feature.properties?.segments ?? []).map((s) => ({
+      distanceM: Math.round(s.distance ?? 0),
+      durationS: Math.round(s.duration ?? 0),
+    })),
+    profile,
+  })
+}
+
+// ---------------------------------------------------------------------------
+// /api/reports
+// ---------------------------------------------------------------------------
+
+async function handleListReports(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url)
+  const bbox = url.searchParams.get('bbox')
+
+  let south = -90
+  let west = -180
+  let north = 90
+  let east = 180
+
+  if (bbox) {
+    const parts = bbox.split(',').map(Number)
+    if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) {
+      return json({ error: 'bad_bbox' }, 400)
+    }
+    ;[south, west, north, east] = parts
+  }
+
+  const now = Date.now()
+  const { results } = await env.DB.prepare(
+    `SELECT id, poi_id, lat, lon, kind, depth, note, created_at, expires_at, up, down
+       FROM reports
+      WHERE expires_at > ?
+        AND lat BETWEEN ? AND ?
+        AND lon BETWEEN ? AND ?
+      ORDER BY created_at DESC
+      LIMIT 1000`
+  )
+    .bind(now, south, north, west, east)
+    .all()
+
+  return json({ reports: results ?? [], now })
+}
+
+async function handleCreateReport(request: Request, env: Env): Promise<Response> {
+  const bucket = await rateBucket(request, env, 'report')
+  const limit = await checkRateLimit(env, bucket, RATE_LIMITS.report)
+  if (!limit.ok) {
+    return json({ error: 'rate_limited' }, 429, {
+      'Retry-After': String(limit.retryAfterS),
+    })
+  }
+
+  let body: Record<string, unknown>
+  try {
+    body = await request.json()
+  } catch {
+    return json({ error: 'bad_json' }, 400)
+  }
+
+  const kind = body.kind as ReportKind
+  if (!kind || !(kind in TTL_MS)) return json({ error: 'bad_kind' }, 400)
+
+  if (!isFiniteLat(body.lat) || !isFiniteLon(body.lon)) {
+    return json({ error: 'bad_coords' }, 400)
+  }
+
+  const depth =
+    kind === 'flooded' && ['ankle', 'knee', 'waist'].includes(String(body.depth))
+      ? String(body.depth)
+      : null
+
+  const poiId =
+    typeof body.poi_id === 'string' && body.poi_id.length <= 64 ? body.poi_id : null
+
+  const note =
+    typeof body.note === 'string' && body.note.trim()
+      ? body.note.trim().slice(0, 200)
+      : null
+
+  const now = Date.now()
+  // Flooding expires in hours, infrastructure in weeks. A monsoon map showing
+  // yesterday's water is more dangerous than a map showing nothing, because a
+  // stale "clear" reads as an all-clear.
+  const expiresAt = now + TTL_MS[kind]
+  const id = crypto.randomUUID()
+
+  await env.DB.prepare(
+    `INSERT INTO reports
+       (id, poi_id, lat, lon, kind, depth, note, created_at, expires_at, up, down)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)`
+  )
+    .bind(
+      id,
+      poiId,
+      roundCoord(body.lat),
+      roundCoord(body.lon),
+      kind,
+      depth,
+      note,
+      now,
+      expiresAt
+    )
+    .run()
+
+  return json({ id, created_at: now, expires_at: expiresAt }, 201)
+}
+
+async function handleVote(
+  request: Request,
+  env: Env,
+  reportId: string
+): Promise<Response> {
+  const bucket = await rateBucket(request, env, 'vote')
+  const limit = await checkRateLimit(env, bucket, RATE_LIMITS.vote)
+  if (!limit.ok) {
+    return json({ error: 'rate_limited' }, 429, {
+      'Retry-After': String(limit.retryAfterS),
+    })
+  }
+
+  let body: Record<string, unknown>
+  try {
+    body = await request.json()
+  } catch {
+    return json({ error: 'bad_json' }, 400)
+  }
+
+  const direction = body.direction === 'down' ? 'down' : 'up'
+  const column = direction === 'up' ? 'up' : 'down'
+
+  const result = await env.DB.prepare(
+    `UPDATE reports SET ${column} = ${column} + 1 WHERE id = ? AND expires_at > ?`
+  )
+    .bind(reportId, Date.now())
+    .run()
+
+  if (!result.meta.changes) return json({ error: 'not_found_or_expired' }, 404)
+
+  const row = await env.DB.prepare('SELECT up, down FROM reports WHERE id = ?')
+    .bind(reportId)
+    .first<{ up: number; down: number }>()
+
+  return json({ id: reportId, ...row })
+}
+
+// ---------------------------------------------------------------------------
+// Router
+// ---------------------------------------------------------------------------
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url)
+
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: corsHeaders() })
+    }
+
+    try {
+      // Each of these owns one path prefix and returns null for anything else,
+      // so they can sit first without shadowing the routes below.
+      const auth = await routeAuth(request, env, url)
+      if (auth) return auth
+
+      const social = await routeSocial(request, env, url)
+      if (social) return social
+
+      const rooms = await routeRooms(request, env, url)
+      if (rooms) return rooms
+
+      const events = await routeEvents(request, env, url)
+      if (events) return events
+
+      const hangout = await routeHangouts(request, env, url)
+      if (hangout) return hangout
+
+      if (url.pathname === '/api/ask' && request.method === 'POST') {
+        return await handleAsk(request, env)
+      }
+
+      if (url.pathname === '/api/route' && request.method === 'POST') {
+        return await handleRoute(request, env)
+      }
+
+      if (url.pathname === '/api/reports') {
+        if (request.method === 'GET') return await handleListReports(request, env)
+        if (request.method === 'POST') return await handleCreateReport(request, env)
+      }
+
+      const voteMatch = url.pathname.match(/^\/api\/reports\/([\w-]+)\/vote$/)
+      if (voteMatch && request.method === 'POST') {
+        return await handleVote(request, env, voteMatch[1])
+      }
+
+      const geo = await routeGeocode(request, env, url)
+      if (geo) return geo
+
+      const board = await routeBoard(request, env, url)
+      if (board) return board
+
+      const destinations = await routeDestinations(request, env, url)
+      if (destinations) return destinations
+
+      if (url.pathname === '/api/health') {
+        // `routing` lets the client disable trip planning up front rather than
+        // offering it and failing at the moment someone tries to use it.
+        return json({ ok: true, routing: Boolean(env.ORS_API_KEY) })
+      }
+
+      return json({ error: 'not_found' }, 404)
+    } catch (err) {
+      // Log the message only. Never log request bodies — they contain the
+      // user's question, which is the one thing we promised not to keep.
+      console.error('worker error:', (err as Error).message)
+      return json({ error: 'internal_error' }, 500)
+    }
+  },
+
+  /** Cron-triggered sweep so expired rows don't accumulate. */
+  async scheduled(_event: ScheduledEvent, env: Env): Promise<void> {
+    const now = Date.now()
+    await env.DB.prepare('DELETE FROM reports WHERE expires_at < ?').bind(now).run()
+    await env.DB.prepare('DELETE FROM rate_limits WHERE window_start < ?')
+      .bind(now - 24 * 60 * 60 * 1000)
+      .run()
+    // Activities take their roster and their whole chat with them when they go.
+    await sweepHangouts(env)
+    await sweepSessions(env)
+    await sweepSocial(env)
+    await sweepRooms(env)
+    await sweepEvents(env)
+  },
+}

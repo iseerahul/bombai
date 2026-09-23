@@ -1,0 +1,62 @@
+# Chronic waterlogging spots in Mumbai — HAND-SEEDED reference layer.
+#
+# WHY THIS FILE EXISTS: there is no clean public API for Mumbai's chronic
+# flooding spots. BMC/MCGM publishes lists in reports and press coverage, and
+# IIT Bombay's flood system is a web portal rather than a feed. So this list is
+# compiled by hand from long-documented, repeatedly-reported locations.
+#
+# HOW IT MUST BE PRESENTED: as "historically floods here", NEVER as live status.
+# Live status comes only from community reports, which expire after 8 hours.
+#
+# ACCURACY CAVEAT: coordinates are approximate junction/landmark centroids
+# (~100-300m). They are good enough to warn "this area floods" and NOT good
+# enough to claim a specific lane is under water. Before any public launch,
+# verify each against OpenStreetMap and correct. Treat this as a seed, not truth.
+#
+# severity: severe | moderate  (severe = recurrent knee-deep-or-worse reporting)
+#
+name,lat,lon,ward,severity,note
+Hindmata Junction,19.0060,72.8410,F/N,severe,Long-standing low-lying bowl; holding ponds added but still floods
+Gandhi Market (King's Circle),19.0270,72.8570,F/N,severe,Classic first-downpour flooding point
+Sion Circle,19.0400,72.8620,F/N,severe,Water collects around the junction and station approach
+Sion Hospital Junction,19.0410,72.8630,F/N,moderate,Approach roads waterlog during high tide plus rain
+Dadar TT Circle,19.0190,72.8430,G/N,moderate,Junction waterlogs in sustained heavy rain
+Matunga Station Road,19.0270,72.8560,F/N,moderate,Side roads flood before the main road does
+Wadala Depot,19.0180,72.8570,F/S,moderate,Low-lying stretch near the depot
+Chunabhatti,19.0430,72.8880,F/N,severe,Recurrent deep waterlogging near the station
+Kurla East (Depot),19.0700,72.8790,L,severe,Mithi river backflow area; floods fast
+Kurla Station Road,19.0650,72.8790,L,severe,Frequent knee-deep reports
+Mankhurd,19.0480,72.9300,M/E,moderate,Low-lying; tidal influence
+Chembur Station,19.0620,72.8990,M/W,moderate,Underpass and approach roads
+Ghatkopar (Amar Mahal),19.0860,72.9080,N,moderate,Junction waterlogs in heavy spells
+Vikhroli Station Road,19.1080,72.9260,S,moderate,East-side approach floods
+Bhandup Station,19.1420,72.9370,S,moderate,Station road and market area
+Powai (IIT gate stretch),19.1180,72.9050,S,moderate,Localised pooling on the lake-side road
+Saki Naka Junction,19.1000,72.8880,L,severe,Notorious junction; drainage repeatedly flagged
+Marol Naka,19.1100,72.8790,K/E,moderate,Waterlogs near the metro corridor works
+Andheri Subway,19.1190,72.8460,K/W,severe,Closes to traffic almost every monsoon
+Andheri East (Chakala),19.1110,72.8600,K/E,moderate,Service roads pool water
+Milan Subway (Santacruz),19.0850,72.8420,H/W,severe,Iconic flooding point; often impassable
+Khar Subway,19.0700,72.8390,H/W,severe,Frequently shut during heavy rain
+Vile Parle Subway,19.0990,72.8440,K/W,moderate,Underpass floods quickly
+Jogeshwari Subway,19.1350,72.8480,K/W,severe,Regularly impassable
+Goregaon Subway,19.1650,72.8500,P/S,moderate,Underpass waterlogging
+Malad Subway,19.1860,72.8480,P/N,severe,Long-standing severe flooding point
+Kandivali (Poisar),19.2050,72.8520,R/S,moderate,Nullah overflow area
+Borivali Station East,19.2300,72.8570,R/C,moderate,Station approach roads
+Dahisar Subway,19.2500,72.8590,R/N,moderate,Underpass and river-adjacent stretch
+Mahim Causeway,19.0330,72.8400,G/N,severe,Tidal plus rain; sea water ingress
+Dharavi (90 Feet Road),19.0400,72.8500,G/N,severe,Dense low-lying area; drains back up
+Bandra East (Kalanagar),19.0540,72.8410,H/E,severe,Junction near the Mithi; floods rapidly
+Elphinstone / Prabhadevi,19.0000,72.8330,G/S,moderate,Low-lying pockets near the station
+Currey Road Bridge,18.9930,72.8320,F/S,moderate,Approach road waterlogging
+Lalbaug Flyover base,18.9930,72.8340,F/S,severe,Bowl at the flyover descent
+Parel TT,19.0000,72.8380,F/S,moderate,Junction pooling in heavy rain
+Byculla Station Road,18.9760,72.8330,E,moderate,Old drainage; backs up in downpours
+Mumbai Central (Nair Hospital),18.9700,72.8210,E,moderate,Hospital approach floods
+Haji Ali Junction,18.9780,72.8090,D,severe,Sea-facing; high tide plus rain closes lanes
+Worli Naka,19.0000,72.8180,G/S,moderate,Junction waterlogging
+Marine Drive (Churchgate end),18.9320,72.8250,A,moderate,Overtopping at high tide during storms
+Fort / CST area,18.9400,72.8350,A,moderate,Heritage drainage; localised pooling
+Masjid Bunder,18.9500,72.8360,B,severe,Very low-lying market area
+Colaba Causeway,18.9150,72.8250,A,moderate,Tidal pooling in heavy rain

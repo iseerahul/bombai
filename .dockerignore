@@ -1,0 +1,43 @@
+# Keep the build context small and the image free of anything secret.
+#
+# node_modules is the big one: both apps' trees together are hundreds of
+# megabytes, they are platform-specific, and the Dockerfile installs its own
+# inside the image anyway. On this project they also live inside OneDrive,
+# which makes reading them slow.
+
+node_modules
+**/node_modules
+
+# Build output — regenerated inside the image. Copying a host build in would
+# quietly ship whatever happened to be on disk.
+dist
+**/.output
+.wrangler
+
+# Secrets and local state. .dev.vars holds the Google client secret; it must
+# never enter an image layer. Pass secrets as environment variables instead.
+.dev.vars
+**/.env
+**/.env.*
+!**/.env.example
+
+# Version control and editor noise.
+.git
+**/.git
+.vscode
+.idea
+
+# Nothing here affects the build.
+*.log
+logs
+docs
+README.md
+**/README.md
+AGENTS.md
+roadmap.md
+scripts/pilot-*.mjs
+scripts/pilot-results.json
+scripts/test-*.mjs
+Dockerfile
+docker-compose.yml
+.dockerignore

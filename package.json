@@ -1,0 +1,46 @@
+{
+  "name": "mumbai-civic-map",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Conversational, accountless, zero-cost map of Mumbai's public utilities.",
+  "scripts": {
+    "dev": "vite",
+    "dev:landing": "npm --prefix mumbai-zenscape run dev -- --port 3000 --host 127.0.0.1",
+    "dev:api": "node scripts/dev-server.mjs --port=8787",
+    "build": "npm run build:map && npm run build:landing",
+    "build:map": "tsc --noEmit && vite build",
+    "build:landing": "node scripts/build-landing.mjs",
+    "build:worker": "node scripts/build-worker.mjs",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p worker/tsconfig.json",
+    "preview": "vite preview",
+    "data": "node scripts/build-data.mjs",
+    "data:civic": "node scripts/build-data.mjs --only=drinking_water,toilets,health,pharmacy",
+    "worker:dev": "wrangler dev",
+    "worker:deploy": "wrangler deploy",
+    "test:events": "node scripts/test-events.mjs",
+    "db:init": "wrangler d1 execute civic-reports --local --file=worker/schema.sql",
+    "db:init:remote": "wrangler d1 execute civic-reports --remote --file=worker/schema.sql",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d",
+    "docker:logs": "docker compose logs -f bambai",
+    "docker:down": "docker compose down"
+  },
+  "dependencies": {
+    "maplibre-gl": "^4.7.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260813.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "wrangler": "^4.122.0"
+  }
+}

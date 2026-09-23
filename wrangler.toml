@@ -1,0 +1,45 @@
+name = "mumbai-civic-map"
+main = "worker/index.ts"
+compatibility_date = "2024-11-01"
+
+# Serve both front ends from the same origin as /api/*, so the browser never
+# makes a cross-origin request and the CSP can stay as tight as it is.
+#
+#   dist/index.html      the landing page   ->  /
+#   dist/app/index.html  the map app        ->  /app/
+#   dist/_headers        headers for both   (see static/_headers)
+#
+# `npm run build` assembles that layout: the map builds into dist/app, then
+# scripts/build-landing.mjs prerenders the landing and copies it alongside.
+[assets]
+directory = "dist"
+# The map has no client-side routes — /app/ is its only entry — so an unknown
+# path falling back to the landing is the behaviour we want.
+not_found_handling = "single-page-application"
+# Requests are tried against the Worker first so /api/* routes win over assets.
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "civic-reports"
+# Local development ignores this id — wrangler keeps a local SQLite file under
+# .wrangler/state instead, so this placeholder is enough to run `wrangler dev`.
+# BEFORE DEPLOYING: run `wrangler d1 create civic-reports` and paste the real id here.
+database_id = "00000000-0000-0000-0000-000000000000"
+
+# Visit photos. Create with: npx wrangler r2 bucket create mumbai-civic-photos
+# R2 has no egress charge, which is why images go here and not through D1.
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "mumbai-civic-photos"
+
+# Nightly sweep of expired reports and stale rate-limit buckets.
+[triggers]
+crons = ["0 3 * * *"]
+
+[observability]
+enabled = true
+
+# Secrets are NOT set here. Set them out of band so they never enter git:
+#   wrangler secret put GEMINI_API_KEY
+#   wrangler secret put IP_SALT

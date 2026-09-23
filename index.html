@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover"
+    />
+    <!-- Browser chrome follows the app's own surface colour in each theme. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#090d14" />
+    <meta
+      name="description"
+      content="Ask Mumbai's map about drinking water, public toilets and monsoon flooding. No account, no cookies, no location history."
+    />
+
+    <!--
+      No cookies, no analytics, no third-party scripts. The CSP is the enforcement:
+      the only external origin the page may talk to is the OpenFreeMap tile server.
+      A duplicate lives in public/_headers, which is what actually protects the
+      deployed site (a meta CSP cannot restrict everything a header can).
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; connect-src 'self' https://tiles.openfreemap.org; img-src 'self' data: blob: https://upload.wikimedia.org https://thumb.wikimedia.org https://lh3.googleusercontent.com; style-src 'self' 'unsafe-inline'; script-src 'self'; worker-src blob:; child-src blob:; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
+
+    <title>Mumbai Civic Map — ask the map</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      This map needs JavaScript to search locally on your device. That local
+      search is exactly why it never sends your location anywhere.
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

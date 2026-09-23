@@ -1,0 +1,20 @@
+# Copy to `.dev.vars` for local `wrangler dev`. Never commit the real file.
+#
+# Get a free Gemini API key at https://aistudio.google.com/apikey
+# (no credit card; the free tier allows roughly 1,500 requests/day).
+GEMINI_API_KEY=your-gemini-api-key-here
+
+# Any long random string. Used to salt the daily rate-limit hash.
+# Changing it resets all rate-limit buckets, which is harmless.
+IP_SALT=change-me-to-something-random
+
+# --- Hangout app: Google sign-in ---
+# Create an OAuth 2.0 Client ID (type: Web application) at
+# https://console.cloud.google.com/apis/credentials
+# Authorised redirect URI (exactly this, for local development):
+#   http://localhost:5173/api/auth/callback
+GOOGLE_CLIENT_ID=PASTE_YOUR_GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET=PASTE_YOUR_GOOGLE_CLIENT_SECRET
+
+# Where the BROWSER is. In dev that's Vite, not the Worker.
+APP_ORIGIN=http://localhost:5173

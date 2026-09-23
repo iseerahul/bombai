@@ -1,0 +1,299 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * The palette lives here as `R G B` channels so Tailwind can apply opacity to
+ * it. Light is the default; dark is a redefinition of the same names, which is
+ * why no component in this app carries a `dark:` class.
+ *
+ * The hues are deliberately restrained. Status colours (positive / caution /
+ * critical) are the only saturated things in the interface, so when something
+ * on screen is coloured it always means something.
+ */
+@layer base {
+  :root {
+    color-scheme: light;
+
+    --c-canvas: 241 245 249;
+    --c-surface: 255 255 255;
+    --c-raised: 255 255 255;
+    --c-sunken: 248 250 252;
+    --c-hover: 241 245 249;
+
+    --c-ink: 15 23 42;
+    --c-muted: 71 85 105;
+    --c-subtle: 129 140 158;
+
+    --c-line: 226 232 240;
+    --c-line-strong: 203 213 225;
+
+    --c-accent: 13 110 118;
+    --c-accent-ink: 11 87 94;
+    --c-accent-soft: 236 250 250;
+
+    --c-positive: 5 150 105;
+    --c-positive-soft: 236 253 245;
+    --c-positive-ink: 6 95 70;
+
+    --c-caution: 217 119 6;
+    --c-caution-soft: 255 251 235;
+    --c-caution-ink: 146 64 14;
+
+    --c-critical: 220 38 38;
+    --c-critical-soft: 254 242 242;
+    --c-critical-ink: 153 27 27;
+
+    --c-info: 2 132 199;
+    --c-info-soft: 240 249 255;
+    --c-info-ink: 7 89 133;
+
+    --c-inverse: 15 23 42;
+    --c-inverse-ink: 255 255 255;
+
+    --c-shadow: 15 23 42;
+  }
+
+  /*
+   * Light only.
+   *
+   * The dark palette used to live here as a `prefers-color-scheme` override.
+   * It is gone deliberately: the basemap is OpenStreetMap's own light style and
+   * cannot follow, so a dark UI meant dark chrome floating on a bright map —
+   * which read as broken rather than as a theme. The seasonal filters in
+   * `ambient.ts` are the supported way to change how the map looks.
+   */
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    @apply bg-canvas text-ink antialiased;
+    /*
+     * No webfont: the CSP forbids external font origins, and self-hosting one
+     * would cost a render-blocking download on the mobile connection this app
+     * targets. A tuned system stack is the better trade.
+     */
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI Variable Text',
+      'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    /* The chat sheet sits above the map; stop iOS rubber-banding the whole page. */
+    overscroll-behavior: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  /*
+   * One focus ring for the whole app, only for keyboard users. Offset so it
+   * reads clearly against both the map and a white sheet.
+   */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2;
+    --tw-ring-offset-color: rgb(var(--c-surface));
+  }
+
+  /* Distances, times and counts should never jitter as they update. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* --- surfaces ---------------------------------------------------------- */
+
+  .sheet {
+    /* Respect the iPhone home indicator so the input isn't under it. */
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  .card {
+    @apply rounded-card border border-line bg-surface;
+  }
+
+  /* --- buttons ----------------------------------------------------------- */
+
+  /*
+   * Every interactive control shares this base: the same height rhythm, the
+   * same disabled treatment, the same 150ms curve. Variants only change colour.
+   */
+  .btn {
+    @apply inline-flex select-none items-center justify-center gap-1.5 rounded-full
+           text-sm font-medium transition-all duration-150 ease-out
+           disabled:pointer-events-none disabled:opacity-40;
+    /* Comfortable thumb target even when the visual box is smaller. */
+    min-height: 2.25rem;
+  }
+
+  .btn-primary {
+    @apply bg-inverse text-inverse-ink shadow-low hover:opacity-90 active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply border border-line-strong bg-surface text-ink hover:bg-hover active:scale-[0.98];
+  }
+
+  .btn-ghost {
+    @apply text-muted hover:bg-hover hover:text-ink;
+  }
+
+  .btn-accent {
+    @apply bg-accent text-white shadow-low hover:opacity-90 active:scale-[0.98];
+  }
+
+  /*
+   * Map chrome sits on top of imagery, so it needs a translucent-but-legible
+   * treatment rather than the flat white used inside sheets.
+   */
+  .chip {
+    @apply btn border px-3 py-1.5;
+    min-height: 2rem;
+  }
+
+  .chip-idle {
+    @apply border-line bg-surface/90 text-muted shadow-low backdrop-blur-md
+           hover:bg-surface hover:text-ink;
+  }
+
+  .chip-active {
+    @apply border-transparent bg-inverse text-inverse-ink shadow-mid;
+  }
+
+  /* --- form -------------------------------------------------------------- */
+
+  .field {
+    @apply w-full rounded-full border border-line bg-sunken px-4 text-base text-ink
+           outline-none transition-colors placeholder:text-subtle
+           hover:border-line-strong focus:border-accent focus:bg-surface;
+    min-height: 2.75rem;
+  }
+
+  /* --- small semantic blocks --------------------------------------------- */
+
+  .tag {
+    @apply inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-2xs font-medium;
+  }
+
+  .notice {
+    @apply rounded-lg px-2.5 py-1.5 text-xs leading-snug;
+  }
+
+  .eyebrow {
+    @apply text-2xs font-semibold uppercase tracking-wider text-subtle;
+  }
+
+  /* Hairline that survives dark mode, used to separate sheet regions. */
+  .divider {
+    @apply border-t border-line;
+  }
+}
+
+@layer utilities {
+  /* Fades the top edge of a scroll region instead of cutting content dead. */
+  .mask-fade-t {
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 12px);
+    mask-image: linear-gradient(to bottom, transparent, #000 12px);
+  }
+
+  .scrollbar-slim {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--c-line-strong)) transparent;
+  }
+
+  .scrollbar-slim::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-slim::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--c-line-strong));
+    border-radius: 9999px;
+  }
+
+  .scrollbar-slim::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* MapLibre ships its own CSS; these are the few overrides we need. */
+.maplibregl-ctrl-attrib {
+  @apply text-2xs;
+}
+
+.maplibregl-ctrl-attrib.maplibregl-compact {
+  @apply rounded-full bg-surface/85 backdrop-blur-md;
+}
+
+.maplibregl-ctrl-attrib a {
+  @apply text-muted;
+}
+
+.maplibregl-popup-content {
+  @apply rounded-card p-0 shadow-high;
+}
+
+/* Keep the built-in zoom/compass controls in the same visual language. */
+.maplibregl-ctrl-group {
+  @apply overflow-hidden rounded-full border border-line bg-surface/90 shadow-low backdrop-blur-md;
+}
+
+.maplibregl-ctrl-group button + button {
+  border-top-color: rgb(var(--c-line));
+}
+
+/* ---------------------------------------------------------------------------
+ * Weather, scoped to the map's own pixels.
+ *
+ * The seasonal look used to be a filter on the whole map container, with a
+ * hue-rotate in it. Two things were wrong with that. Rotating hue does not
+ * make a map look rainy, it makes it look like a different map: parks go blue,
+ * water goes purple, the colours stop meaning what the legend says they mean.
+ * And the container holds MapLibre's zoom buttons and every marker, so the
+ * controls and the pins were being recoloured along with the ground.
+ *
+ * So the filter now targets only the <canvas> the map draws into, and it is
+ * achromatic — light levels change, hues do not. Rain makes the city darker,
+ * winter makes it brighter and flatter, exactly as the light would. The colour
+ * of the weather comes from what is painted *over* the map, not from bending
+ * the map's own palette.
+ * ------------------------------------------------------------------------ */
+.maplibregl-canvas {
+  transition: filter 700ms ease-out;
+}
+[data-weather='rain'] .maplibregl-canvas {
+  filter: brightness(0.78) contrast(1.06) saturate(0.82);
+}
+[data-weather='snow'] .maplibregl-canvas {
+  filter: brightness(1.14) contrast(0.95) saturate(0.7);
+}
+[data-weather='autumn'] .maplibregl-canvas {
+  filter: brightness(1.02) saturate(1.1);
+}
+
+/*
+ * Keep the controls and the markers out of the weather.
+ *
+ * The ambient canvas sits at z-index 5 over the map so rain falls in front of
+ * the city. Both of these live inside the map container with no stacking of
+ * their own, which put them underneath it — so a rain wash tinted the zoom
+ * buttons and every pin. They are interface, not scenery.
+ */
+.maplibregl-control-container {
+  position: relative;
+  z-index: 6;
+}
+.maplibregl-marker {
+  z-index: 6;
+}

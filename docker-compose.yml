@@ -1,0 +1,49 @@
+# Bambai, self-hosted.
+#
+#   docker compose up --build      →  http://localhost:8787
+#
+# The landing is at /, the map at /app/, the API at /api/*, all from this one
+# container — the same single-origin layout as the Cloudflare deployment, which
+# is what keeps "Explore Bambai" a plain same-origin link.
+
+services:
+  bambai:
+    build: .
+    image: bambai:local
+    ports:
+      - "8787:8787"
+    environment:
+      # Where the browser thinks it is. Google's OAuth redirect is built from
+      # this, so it must match the URL you actually open AND the Authorised
+      # redirect URI registered in Google Cloud, or sign-in fails with
+      # redirect_uri_mismatch. Behind a reverse proxy, set your public https URL.
+      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:8787}
+
+      # Salts the rate-limit hash. Any long random string; changing it just
+      # resets the buckets. Generate one with:  openssl rand -hex 32
+      IP_SALT: ${IP_SALT:?set IP_SALT in .env or the environment}
+
+      # Optional. Leave both unset and the Worker enables its local dev login
+      # instead — fine for a demo, never for anything reachable from outside.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+
+    volumes:
+      # Everything that must outlive the container: the SQLite database and
+      # every uploaded photo. Without this, `docker compose down` deletes every
+      # account, pin and picture.
+      - bambai-data:/data
+
+    restart: unless-stopped
+
+    # The Worker answers this without touching the database, so it reports the
+    # process being up rather than the database being reachable.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+volumes:
+  bambai-data:

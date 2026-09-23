@@ -1,0 +1,23 @@
+node_modules/
+dist/
+# The landing's prerender output, folded into dist/ by the build.
+.output/
+.wrangler/
+.vscode/
+.idea/
+
+# Wrangler local secrets — GEMINI_API_KEY lives here during development and
+# must never be committed.
+.dev.vars
+
+# Read by `docker compose` for IP_SALT and the Google credentials.
+.env
+
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# NOTE: public/data/*.geojson is intentionally NOT ignored.
+# Committing the baked extract means a bad Overpass day can never block a build
+# or a demo, and it makes the deployed data reproducible.

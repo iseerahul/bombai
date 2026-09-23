@@ -1,0 +1,13 @@
+{
+  "generated": "2026-09-16T10:41:48.767Z",
+  "bbox": "18.87,72.77,19.32,73.02",
+  "counts": {
+    "food": 2454,
+    "park": 1992,
+    "waterfront": 47,
+    "sports": 1690,
+    "culture": 396,
+    "market": 206,
+    "flood_spot": 44
+  }
+}
