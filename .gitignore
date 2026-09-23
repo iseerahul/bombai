@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# Bundled Worker, kept out of dist/ so it is never served as a public asset.
+build/
 # The landing's prerender output, folded into dist/ by the build.
 .output/
 .wrangler/

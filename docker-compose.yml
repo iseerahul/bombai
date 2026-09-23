@@ -23,8 +23,9 @@ services:
       # redirect_uri_mismatch. Behind a reverse proxy, set your public https URL.
       # On a public host this MUST be the URL people actually type. Left at a
       # localhost value on an internet-facing box it switches on the dev
-      # sign-in shortcut — anyone could become any user — so the server now
-      # refuses to start in that combination rather than serving it.
+      # sign-in shortcut — anyone could become any user. The server switches
+      # that shortcut off automatically for any non-loopback bind, but
+      # APP_ORIGIN still has to be right for OAuth and cookie flags to work.
       APP_ORIGIN: ${APP_ORIGIN:-http://localhost:8787}
 
       # Salts the rate-limit hash. Any long random string; changing it just
@@ -41,6 +42,16 @@ services:
       # become any user. Set this to 1 only on a trusted private network where
       # you want the shortcut back.
       ALLOW_DEV_LOGIN: ${ALLOW_DEV_LOGIN:-}
+
+      # Walking, cycling and driving directions. Without it /api/route returns
+      # 503 and the client quietly falls back to straight lines with guessed
+      # times — no error, just worse answers. Free key, no card:
+      # https://openrouteservice.org/dev/#/signup
+      ORS_API_KEY: ${ORS_API_KEY:-}
+
+      # A third event source. Without it that importer reports not_configured
+      # and the other sources still run.
+      TICKETMASTER_API_KEY: ${TICKETMASTER_API_KEY:-}
 
     volumes:
       # Everything that must outlive the container: the SQLite database and

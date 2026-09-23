@@ -3,6 +3,18 @@
 Run 2026-09-15 against the live corpus and the production prompt.
 Raw data: `scripts/pilot-results.json` · Harness: `scripts/pilot-grounding.mjs`
 
+> **Note added 2026-09-23 — the LLM path has since been removed.**
+> This document is a historical record of the 2026-09-15 pilot and its findings
+> are unchanged. It is not a description of how the app works today. `/api/ask`,
+> the Gemini client and `GEMINI_API_KEY` no longer exist; query interpretation
+> and ranking are now deterministic and fully on-device
+> (`src/search/interpret.ts`, `src/search/rank.ts`). One consequence for §1: the
+> harness no longer reads `SYSTEM_PROMPT` out of `worker/index.ts` at runtime,
+> because that constant was deleted with the rest of the Gemini code. The prompt
+> is now inlined verbatim in `scripts/pilot-grounding.mjs`, recovered byte-for-byte
+> from the revision in force when this run was made, so the numbers below stay
+> reproducible.
+
 ---
 
 ## 1. Method

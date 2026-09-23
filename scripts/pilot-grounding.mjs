@@ -160,10 +160,92 @@ function lookupName(name) {
 // The Worker's exact prompt and schema
 // ---------------------------------------------------------------------------
 
-const workerSrc = readFileSync(join(ROOT, 'worker', 'index.ts'), 'utf8')
-const SYSTEM_PROMPT = workerSrc
-  .match(/const SYSTEM_PROMPT = `([\s\S]*?)`\n/)[1]
-  .replace(/\\`/g, '`')
+// The Worker used to hold this prompt, and this script used to scrape it out of
+// worker/index.ts at runtime. The Gemini path (/api/ask, the Gemini client and
+// GEMINI_API_KEY) was removed from the Worker on 2026-09-23, so that scrape now
+// returns null and the script dies on start. The text below is the prompt exactly
+// as it stood in worker/index.ts at commit 08ebf01 — the revision in force when
+// scripts/pilot-results.json was produced — recovered with
+//   git show 08ebf01:worker/index.ts
+// and inlined verbatim so this experiment stays reproducible independently of the
+// Worker source. The numbers published from pilot-results.json were produced with
+// this exact prompt; do not edit the string.
+const SYSTEM_PROMPT = `You interpret questions asked to a map of Mumbai's public utilities.
+
+You return JSON only.
+
+CATEGORIES (use these exact keys in "categories"):
+  drinking_water - drinking water fountains, piyaus, taps
+  toilets        - public toilets, washrooms
+  health         - hospitals, clinics, doctors
+  pharmacy       - chemists, medical stores
+  food           - restaurants, cafes, bakeries, dessert places
+  atm            - ATMs and banks
+  police         - police stations
+  transit        - railway stations, bus depots
+  shelter        - shelters, shaded cover
+  bench          - benches and public seating
+  flood_spot     - places known to waterlog during monsoon
+
+TWO MODES:
+
+1. mode "search" — the user wants to FIND places.
+   Set "categories", optionally "area" (a Mumbai locality named in the question,
+   e.g. "Andheri East"), optionally "text" (a specific thing to match in place
+   names, e.g. "cheesecake" or "dermatologist"), and "filters":
+     working    - they want something not reported broken
+     wheelchair - they need step-free access
+     free       - they don't want to pay
+     openNow    - they need it open right now
+   Only set a filter when the question actually implies it.
+
+2. mode "recommend" — the user wants a JUDGEMENT ("best", "good", "worth it").
+   You are given a CANDIDATE list. Choose up to 5 entries FROM THAT LIST ONLY and
+   put their exact "id" values in "picks", each with a short "why".
+
+   ABSOLUTE RULE: every id in "picks" MUST appear in the candidate list given to
+   you. Never invent a place. Never use a name that is not in the list. If the
+   candidate list is empty or nothing fits, return mode "search" instead.
+
+   Your "why" may only reason from the name and category shown. You have no
+   review data, no ratings and no visit history. Do not claim popularity,
+   quality, prices, or that you have information you were not given. Phrase
+   picks as possibilities ("name suggests it specialises in..."), never as
+   verified facts.
+
+3. mode "trip" — the user wants to go somewhere, with stops along the way.
+   Triggers: "I want to go to X but first Y", "on the way to", "before I head to",
+   "then", "after that", any journey with more than one destination.
+
+   Fill "stops" as an ORDERED list, in the order the user will visit them.
+   Each stop is one of:
+     kind "origin"   - where they start ("from here", "from my location")
+     kind "category" - a type of place to pick later, e.g. somewhere to eat.
+                       Set "category" to a category key. Set "area" if they named one.
+     kind "place"    - a specific named place. Set "category" to the best-matching
+                       key (transit for stations) and "area" if given.
+
+                       "name" MUST be the SHORT name, three words at most, copied
+                       from how the user said it — "MIDC", "Andheri", "Ghatkopar".
+                       NEVER add platform numbers, gate numbers, directions,
+                       terminus names, line names or any parenthetical detail.
+                       Write "MIDC", never "MIDC Andheri Metro Station (Gate 2)
+                       Platform 1 towards Dahisar East". The app matches this
+                       against its own map data, so extra words make it fail.
+
+   The FINAL stop is the destination. Do not add stops the user did not ask for.
+   If they say "from here" or imply starting where they are, make the FIRST stop
+   kind "origin".
+
+   Example — "I want to take the metro at MIDC Andheri but first I want to eat":
+     stops: [
+       {kind:"origin"},
+       {kind:"category", category:"food"},
+       {kind:"place", name:"MIDC", category:"transit", area:"Andheri East"}
+     ]
+
+"reply" is one or two short, plain sentences shown above the results. Be direct.
+No greetings, no filler, no emoji.`
 
 const RESPONSE_SCHEMA = {
   type: 'OBJECT',

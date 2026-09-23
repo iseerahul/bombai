@@ -4,6 +4,18 @@ A strategic guide for turning this project into a paper submittable to the AI
 track of a conference. Read §0 first — it is the part that decides whether the
 paper is accepted or desk-rejected.
 
+> **Note added 2026-09-23 — the LLM path has since been removed.**
+> This document is a historical record of the paper strategy as it stood when
+> the system still had a Gemini interpreter, and its analysis is left exactly as
+> written. It does not describe the system as it is today: `/api/ask`, the Gemini
+> client and `GEMINI_API_KEY` are gone, and query interpretation and ranking are
+> now deterministic and fully on-device (`src/search/interpret.ts`,
+> `src/search/rank.ts`). Anything below phrased in the present tense about the
+> model fallback chain, the `/api/ask` payload or the LLM interpreter describes
+> the system as of 2026-09-15, not now. `docs/SEARCH-ENGINE-DESIGN.md` §8 sets
+> out the revised thesis that followed from the removal, and the pilot data in
+> `docs/PILOT-RESULTS.md` remains valid as the LLM comparison arm.
+
 ---
 
 ## 0. The hard truth first

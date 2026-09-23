@@ -10,13 +10,15 @@ node_modules
 
 # Build output — regenerated inside the image. Copying a host build in would
 # quietly ship whatever happened to be on disk.
-dist
+**/dist
 **/.output
-.wrangler
+**/.wrangler
+# Bundled Worker: rebuilt in the image, and must never come from the host.
+**/build
 
 # Secrets and local state. .dev.vars holds the Google client secret; it must
 # never enter an image layer. Pass secrets as environment variables instead.
-.dev.vars
+**/.dev.vars
 **/.env
 **/.env.*
 !**/.env.example

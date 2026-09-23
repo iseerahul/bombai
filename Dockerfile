@@ -26,10 +26,11 @@ WORKDIR /build
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
-COPY mumbai-zenscape/package.json mumbai-zenscape/
-# No lockfile is committed for the landing (Lovable manages it with bun), so
-# this cannot be `npm ci`.
-RUN cd mumbai-zenscape && npm install --no-audit --no-fund
+COPY mumbai-zenscape/package.json mumbai-zenscape/package-lock.json mumbai-zenscape/
+# Its lockfile IS committed, so pin exactly. Resolving ~60 caret ranges fresh
+# on every cache miss meant the image could build against versions nobody had
+# run, and a break would surface as a confusing prerender failure.
+RUN cd mumbai-zenscape && npm ci --no-audit --no-fund
 
 COPY . .
 
@@ -49,19 +50,23 @@ WORKDIR /app
 # Only what the server actually reads at runtime. No node_modules: the shim
 # has no dependencies left once it is handed a prebuilt bundle, which is the
 # whole reason build-worker.mjs exists.
-COPY --from=build /build/dist ./dist
-COPY --from=build /build/scripts/dev-server.mjs ./scripts/dev-server.mjs
-COPY --from=build /build/worker/schema.sql ./worker/schema.sql
+# --chown on the COPY itself: a later `chown -R /app` rewrites every file and
+# leaves a second full copy of both front ends in the image layer.
+COPY --from=build --chown=node:node /build/dist ./dist
+# Outside dist/ on purpose: dist/ is served publicly.
+COPY --from=build --chown=node:node /build/build/worker.mjs ./build/worker.mjs
+COPY --from=build --chown=node:node /build/scripts/dev-server.mjs ./scripts/dev-server.mjs
+COPY --from=build --chown=node:node /build/worker/schema.sql ./worker/schema.sql
 
 # The database and uploaded photos live here. Mount a volume over it or the
 # first `docker rm` takes every account, pin and photo with it.
 ENV DATA_DIR=/data
 # Skips esbuild at boot — the bundle was built in stage 1.
-ENV WORKER_BUNDLE=/app/dist/worker.mjs
+ENV WORKER_BUNDLE=/app/build/worker.mjs
 # Without this the server binds the CONTAINER's loopback, the published port
 # reaches nothing, and every request returns an empty reply.
 ENV HOST=0.0.0.0
-RUN mkdir -p /data && chown -R node:node /data /app
+RUN mkdir -p /data && chown node:node /data
 
 # `node` rather than root: this process serves uploads and runs a SQL database.
 USER node

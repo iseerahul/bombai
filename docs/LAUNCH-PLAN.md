@@ -1,24 +1,27 @@
 # Launch Plan — from localhost to 500 real users
 
-Written 2026-09-16. Ordered by what blocks what.
+Written 2026-09-16, updated 2026-09-23. Ordered by what blocks what.
 
 ---
 
-## 0. Read this first: the one thing that decides whether you can launch
+## 0. Read this first: the launch blocker that used to be here is gone
 
-**Your AI quota is 40 requests per day, total, across all users.**
+**Update, 2026-09-23 — the AI quota is no longer a constraint, because there is
+no AI call.** The LLM path has been removed: `/api/ask`, the Gemini client and
+`GEMINI_API_KEY` no longer exist. Query interpretation and ranking now run
+entirely in the browser — `src/search/interpret.ts` into `src/search/rank.ts` —
+so "Ask map" makes **zero network calls** and has no per-day ceiling, no
+per-call cost and no model to retire.
 
-Gemini's free tier gives 20 requests/day/model, and `GEMINI_MODELS` has two
-models in the fallback chain. That is not 40 per user — it is **40 per day for
-the entire application**.
+For the record, this section previously read: the Gemini free tier gave 20
+requests/day/model across a two-model fallback chain — 40/day for the entire
+application, against ~1,500/day needed at 500 users, a 37× shortfall that would
+have killed the flagship feature within minutes of launch. That risk is retired,
+not mitigated.
 
-At 500 users asking even three questions each, you need ~1,500/day. You are
-**37× short**. On launch day the "Ask map" feature — your flagship, and the
-subject of your paper — would die within the first few minutes of traffic, and
-every user after that would silently get the deterministic fallback parser.
-
-This is fixable, and cheaply, but it must be fixed **before** you send anyone a
-link. Everything in §2 depends on it.
+Two things follow. The remaining launch blockers are in §2 and none of them
+depend on this any more; and the privacy claim no longer carries an asterisk,
+which matters for §2.5 and for §3's "the story that travels".
 
 ---
 
@@ -47,7 +50,6 @@ database_id = "PASTE_THE_REAL_ID_HERE"   # was 00000000-0000-0000-0000-000000000
 npm run db:init:remote
 
 # 5. Secrets — never in git
-npx wrangler secret put GEMINI_API_KEY
 npx wrangler secret put IP_SALT            # FRESH random value, not your dev one
 npx wrangler secret put ORS_API_KEY
 npx wrangler secret put GOOGLE_CLIENT_ID
@@ -78,37 +80,18 @@ runs on Linux and has no such policy.
 
 ## 2. Blockers that must be fixed before you share the link
 
-### 2.1 🔴 AI quota — see §0
+### 2.1 ✅ AI quota — resolved 2026-09-23, no longer a blocker
 
-Three changes, in order of leverage. The first two also make your paper
-stronger.
+This section planned four mitigations for the Gemini quota: invert the fallback
+to local-first with LLM escalation, cache interpretations in D1, enable billing
+with a spend cap, and add a per-user daily ask cap.
 
-**(a) Invert the fallback: local-first, LLM on escalation.**
-Right now the LLM is primary and `localInterpret` is the fallback. Flip it. The
-deterministic parser already handles the common civic queries — category
-keywords, the locality gazetteer, wheelchair/fee/open-now filters, trip
-segmentation. Send to Gemini **only** when the local parser returns null or the
-query is a genuine judgement call ("best", "good", "worth it").
+**None of them are needed.** Rather than being made cheaper, the LLM was removed
+outright. Interpretation is now fully deterministic and on-device, so there is no
+quota to run out of, no bill to cap, no interpretation cache to keep warm, and no
+`RATE_LIMITS.ask` bucket to tune. See §0 and `docs/SEARCH-ENGINE-DESIGN.md`.
 
-Realistically this removes 70–80% of calls. It also cuts latency to zero for
-most queries and strengthens the privacy claim — most questions would then
-never leave the device at all. For the paper this converts §3.7 from a
-degradation story into the *primary* design.
-
-**(b) Cache interpretations.**
-Normalise the question (lowercase, strip punctuation, collapse whitespace), hash
-it, store the interpretation in D1 with a 7-day TTL. "public toilet in andheri
-east" will be asked hundreds of times by 500 users. Cache before the rate limit,
-not after.
-
-**(c) Then enable billing, with a hard spend cap.**
-After (a) and (b) you are looking at maybe 100–300 real LLM calls/day. On
-Flash-lite with ~2k-token prompts that is small money — **check current pricing
-yourself**, but expect single-digit USD/month at this scale. Set a billing alert
-and a cap so a bug or an abusive user cannot run up a bill.
-
-**(d) Add a per-user daily cap.** `RATE_LIMITS.ask` is currently 40/hour per IP
-hash. Add a daily ceiling too, so one person cannot consume the budget.
+The launch blockers that remain are 2.2 through 2.5.
 
 ### 2.2 🔴 Nobody can create an account
 
@@ -158,7 +141,10 @@ You will store real emails via OAuth. **India's DPDP Act 2023 applies.**
 - **Re-check `PrivacyDialog` against reality.** It was written when there were no
   accounts. "No account, no cookies, no location history" is now only true for
   the anonymous Ask-map path. Keep it accurate per-mode or you undermine the one
-  thing that makes this project distinctive.
+  thing that makes this project distinctive. (Updated 2026-09-23: the dialog has
+  been rewritten and no longer claims a Gemini path exists. With the LLM gone,
+  the Ask-map claim is now unqualified — nothing you type leaves the device —
+  but the account and storage caveats in this bullet still stand.)
 - Add a **contact email** so event sources can reach you. Given you import from
   Luma and AllEvents, being reachable is part of the ethical posture you claim.
 - **Credit your sources in the UI.** You already tag each event's provenance;
@@ -244,7 +230,7 @@ breaks, fix it, post again.
 
 | Priority | Work | Why |
 |---|---|---|
-| **1** | Local-first routing + interpretation cache + per-user daily cap (§2.1) | Without this, launch fails in minutes |
+| ~~**1**~~ | ~~Local-first routing + interpretation cache + per-user daily cap (§2.1)~~ | ✅ Moot — the LLM was removed instead (2026-09-23) |
 | **2** | Google OAuth + production redirect URI (§2.2) | Without this, no accounts exist |
 | **3** | CSP fix for avatars (§2.3) | Visibly broken for every signed-in user |
 | **4** | Deploy, seed events, verify end to end (§1) | Also unblocks your local dev |
@@ -254,15 +240,16 @@ breaks, fix it, post again.
 | **8** | PWA, OG tags, domain, real-device testing (§3) | Launch polish |
 | **9** | *Then* post to r/mumbai | |
 
-Items 1–3 are the real blockers. Everything else can follow a soft launch to a
-small group.
+Items 2–3 are now the real blockers. Everything else can follow a soft launch to
+a small group.
 
 ---
 
 ## 5. Capacity check at 500 users
 
-Cloudflare's free tier is comfortable at this scale; the AI quota is the only
-binding constraint.
+Cloudflare's free tier is comfortable at this scale. **Since the LLM was removed
+on 2026-09-23 there is no binding constraint left** — the row that used to be the
+ceiling is gone.
 
 | Resource | Free tier | Estimated at 500 users | Headroom |
 |---|---|---|---|
@@ -271,7 +258,7 @@ binding constraint.
 | D1 storage | 5 GB | a few MB | fine |
 | OpenFreeMap tiles | free, keyless | — | fine |
 | OpenRouteService | 2,000 routes/day | maybe 200–500 | fine |
-| **Gemini** | **40/day total** | **~1,500/day** | ❌ **37× short** |
+| ~~Gemini~~ | — | **0/day** | ✅ removed; search is on-device |
 
 The events cron is server-side and runs on a fixed schedule, so **importer load
 does not grow with users at all** — a nice property worth keeping.
@@ -280,11 +267,12 @@ does not grow with users at all** — a nice property worth keeping.
 
 ## 6. What I recommend doing next
 
-Items 1–3 in §4 are mechanical and I can implement them:
+Items 2–3 in §4 are mechanical and I can implement them:
 
-- invert the interpreter to local-first with LLM escalation
-- add the normalised-question interpretation cache in D1
-- add a per-user daily ask cap
+- ~~invert the interpreter to local-first with LLM escalation~~ — superseded: the
+  interpreter is now fully local and the LLM is gone (2026-09-23)
+- ~~add the normalised-question interpretation cache in D1~~ — moot, nothing to cache
+- ~~add a per-user daily ask cap~~ — moot, no per-call cost
 - fix the CSP for avatars
 
 That is the work that turns "runs on my laptop" into "survives 500 people".

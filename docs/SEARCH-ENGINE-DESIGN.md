@@ -4,6 +4,18 @@ Design note, 2026-09-16. All coverage numbers below were measured live against
 OpenStreetMap for the Mumbai bbox `18.87,72.77,19.32,73.02` on that date, not
 estimated.
 
+> **Note added 2026-09-23 — this proposal has been carried out.**
+> This is a historical design note, written while the LLM was still live, and
+> the body is left as written. The change it argues for has since shipped:
+> `/api/ask`, the Gemini client and `GEMINI_API_KEY` have been removed, and
+> search is now deterministic ranking in `src/search/rank.ts`, fed by
+> `src/search/interpret.ts`, `src/search/moods.ts` and `src/search/localIndex.ts`,
+> and wired into `src/App.tsx`. So any sentence below in the present tense about
+> the LLM ("right now it carries an asterisk", "a model you no longer use") is
+> describing 2026-09-16, not today, and the tasks in §7 are done rather than
+> pending. The measured tag-coverage numbers in §2, the mood taxonomy in §5 and
+> the scoring model in §6 still describe the shipped design.
+
 ---
 
 ## 1. Verdict: do it

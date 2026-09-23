@@ -21,7 +21,14 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const out = join(root, 'dist', 'worker.mjs')
+/*
+ * Deliberately NOT inside dist/.
+ *
+ * dist/ is what `wrangler deploy` uploads as public static assets, and what the
+ * Node shim serves. A bundle written there is downloadable at /worker.mjs —
+ * the whole server, every route, every SQL string and the auth flow. It was.
+ */
+const out = join(root, 'build', 'worker.mjs')
 
 const result = await build({
   entryPoints: [join(root, 'worker', 'index.ts')],
@@ -38,4 +45,4 @@ const code = result.outputFiles[0].text
 await mkdir(dirname(out), { recursive: true })
 await writeFile(out, code, 'utf8')
 
-console.log(`✓ dist/worker.mjs (${(code.length / 1024).toFixed(1)} kB)`)
+console.log(`✓ build/worker.mjs (${(code.length / 1024).toFixed(1)} kB)`)

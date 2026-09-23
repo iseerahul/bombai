@@ -7,6 +7,16 @@ as a brief.
 Everything below describes what **actually exists and works today**. Nothing here
 is aspirational.
 
+> **Correction, 2026-09-23 — the LLM path has been removed.** `/api/ask`, the
+> Gemini client and `GEMINI_API_KEY` no longer exist. Ask map is now
+> **fully on-device**: `src/search/interpret.ts` parses the query and
+> `src/search/rank.ts` ranks the results, with no network call at all. The
+> affected passages below (§1's honesty principle, §5.2, §8's API table and
+> §10's paste-ready brief) have been corrected. Note also that §5.2 still names
+> `ChatPanel`; the component is now `src/chat/AskPanel.tsx`, and `PoiCard` has
+> been folded into `src/ui/ResultRail.tsx`. That renaming has not been chased
+> through the rest of this document.
+
 ---
 
 ## 1. What the product is
@@ -28,7 +38,8 @@ moment one is actually required (joining, chatting, posting).
 This app never pretends to know something it doesn't. This is not a footnote —
 it is the design brief. Every surface must carry provenance and admit gaps:
 
-- Every AI answer says whether it was resolved on-device or sent to a server.
+- Every answer is resolved on-device, and every result card shows the facts it
+  was ranked on (`park · 310 m · open now`) rather than an opaque suggestion.
 - Every event carries a source badge; a member's post never looks like a
   verified listing.
 - A route drawn from a straight-line fallback renders **dashed**, never solid.
@@ -82,7 +93,7 @@ is a redefinition of the same names.
 | `accent-ink` | `11 87 94` | text on accent-soft |
 | `accent-soft` | `236 250 250` | accent background wash |
 | `positive` / `-soft` / `-ink` | `5 150 105` / `236 253 245` / `6 95 70` | working, confirmed, free |
-| `caution` / `-soft` / `-ink` | `217 119 6` / `255 251 235` / `146 64 14` | AI caveats, uncertainty |
+| `caution` / `-soft` / `-ink` | `217 119 6` / `255 251 235` / `146 64 14` | caveats, uncertainty, "hours unknown" |
 | `critical` / `-soft` / `-ink` | `220 38 38` / `254 242 242` / `153 27 27` | broken, errors |
 | `info` / `-soft` / `-ink` | `2 132 199` / `240 249 255` / `7 89 133` | external source badges |
 | `inverse` / `-ink` | `15 23 42` / `255 255 255` | primary buttons, own chat bubbles |
@@ -258,8 +269,10 @@ text with, beneath them:
 - an error notice (`bg-critical-soft`, `alert` icon)
 - for recommendations, a caution notice (`bg-caution-soft`, `sparkle` icon)
 - **a provenance line on every turn** — `shield` icon + "Answered on your device
-  — nothing was sent anywhere." or `info` icon + "Your question text was sent to
-  the AI service. Your location was not." plus "· within 1.2 km"
+  — nothing was sent anywhere." There is no second, server-side branch any more:
+  since the LLM was removed on 2026-09-23 the query never leaves the device, so
+  the line is unconditional. (Routing is the one thing that still goes out, and
+  it is disclosed separately in the privacy dialog.)
 - result cards (`PoiCard`)
 - or an empty-state card explaining OSM sparsity
 
@@ -268,10 +281,12 @@ states the blur radius), a round input (`autoComplete="off"`, no name that could
 be autofilled), and a round 2.75rem accent send button.
 
 #### `PoiCard`
-Props: `poi`, `selected`, `why?` (AI rationale), `onSelect`, `onReport`.
+Props: `poi`, `selected`, `why?`, `onSelect`, `onReport`.
 Shows name, category, distance, community status verdict, accessibility/fee tags,
-opening hours (or "hours unknown"), and — when it came from a recommendation —
-the AI's reason with an "unverified" treatment.
+opening hours (or "hours unknown"), and the ranker's explanation — `why` is a
+list of the facts the score was built from (`park · 310 m · open now`), not a
+model's prose. Every component of it is checkable, so it is shown plainly rather
+than with an "unverified" treatment.
 
 #### `DetailPanel` — replaces ChatPanel when a POI is selected
 Props: `poi`, `reports`, `onClose`, `onReport`, `onGo(poi, mode)`, `onAddToTrip`,
@@ -538,7 +553,7 @@ Same origin, `/api/*`. Session is an opaque cookie (SHA-256 hashed server-side).
 ### Ask map
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/api/ask` | `{question, candidates[]}` → interpretation. **Never receives coordinates.** |
+| — | *(no interpretation endpoint)* | Removed 2026-09-23. `/api/ask` is gone; the question is parsed and ranked in the browser and **never leaves the device**. |
 | POST | `/api/route` | `{coordinates[], profile}` → route geometry |
 | GET/POST | `/api/reports` | Community reports (anonymous, rate-limited) |
 | POST | `/api/reports/:id/vote` | Up/down |
@@ -637,9 +652,10 @@ Same origin, `/api/*`. Session is an opaque cookie (SHA-256 hashed server-side).
 > 80vh. Empty state: "Ask Mumbai's map", a green privacy pill, and six suggestion
 > cards with leading icons. Conversation: right-aligned dark user bubbles, plain
 > left-aligned answers, a three-dot "Working it out" indicator, and — on every
-> single answer — a provenance line reading either "Answered on your device —
-> nothing was sent anywhere" or "Your question text was sent to the AI service.
-> Your location was not." Composer: a "Near me" toggle pill, a round input, and a
+> single answer — a provenance line reading "Answered on your device — nothing
+> was sent anywhere". There is no server-side answering path: the question is
+> parsed and ranked in the browser, and each result card shows the facts it was
+> ranked on ("park · 310 m · open now"). Composer: a "Near me" toggle pill, a round input, and a
 > round accent send button. Selecting a place swaps the sheet for a detail panel
 > with a **Go** button offering walk / car / public transport.
 >

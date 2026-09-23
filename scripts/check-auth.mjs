@@ -108,3 +108,7 @@ console.log(
     ? '\n\x1b[32mReady.\x1b[0m Open the app, tap "Been here", and you should reach Google.\n'
     : `\n${problems} thing${problems === 1 ? '' : 's'} to fix.\n`
 )
+
+// Exit non-zero when something is actually wrong, so this can gate a script.
+// It used to end on a console.log, which made `check-auth && deploy` always deploy.
+process.exit(problems === 0 ? 0 : 1)

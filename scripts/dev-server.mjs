@@ -254,8 +254,16 @@ function fileAt(path) {
  * no file, falls through to the SPA shell, and serves the landing page where
  * the map should be.
  */
+/*
+ * Deploy-time config that lives in the assets directory but is not content.
+ * Cloudflare withholds these; nothing was withholding them here, so
+ * `curl /_headers` returned the security policy as a file.
+ */
+const NOT_PUBLIC = new Set(['_headers', '_redirects', '_routes.json'])
+
 function serveAsset(pathname) {
   if (pathname.includes('..')) return null
+  if (NOT_PUBLIC.has(pathname.replace(/^\/+/, ''))) return null
   const rel = pathname.replace(/^\/+/, '')
   const target = join(DIST, rel)
 
@@ -269,6 +277,36 @@ function serveAsset(pathname) {
 
   // Single-page app: unknown non-file paths fall back to the shell.
   return fileAt(join(DIST, 'index.html'))
+}
+
+/**
+ * The security headers static/_headers gives the Cloudflare deployment.
+ *
+ * The landing is a prerendered TanStack page that ships two inline hydration
+ * scripts, so `script-src` has to allow inline there and only there. The map
+ * holds sessions and photos and keeps the strict policy.
+ */
+function securityHeaders(pathname) {
+  const isMap = pathname === '/app' || pathname.startsWith('/app/')
+  const csp = isMap
+    ? "default-src 'self'; connect-src 'self' https://tiles.openfreemap.org; " +
+      "img-src 'self' data: blob: https://upload.wikimedia.org https://thumb.wikimedia.org " +
+      "https://lh3.googleusercontent.com; style-src 'self' 'unsafe-inline'; script-src 'self'; " +
+      "worker-src blob:; child-src blob:; font-src 'self' data:; frame-ancestors 'none'; " +
+      "base-uri 'self'; form-action 'none'; object-src 'none'"
+    : "default-src 'self'; connect-src 'self'; img-src 'self' data: blob:; " +
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+      "script-src 'self' 'unsafe-inline'; font-src 'self' data: https://fonts.gstatic.com; " +
+      "frame-ancestors 'none'; base-uri 'self'; form-action 'none'; object-src 'none'"
+
+  return {
+    'content-security-policy': csp,
+    'referrer-policy': 'no-referrer',
+    'x-content-type-options': 'nosniff',
+    'x-frame-options': 'DENY',
+    'permissions-policy': 'geolocation=(self), camera=(), microphone=(), payment=()',
+    'cross-origin-opener-policy': 'same-origin',
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -373,7 +411,21 @@ const server = createServer(async (req, res) => {
   if (!url.pathname.startsWith('/api/')) {
     const asset = serveAsset(url.pathname)
     if (asset) {
-      res.writeHead(200, { 'content-type': asset.type, 'cache-control': 'no-cache' })
+      /*
+       * static/_headers is honoured by Cloudflare, and was honoured by nothing
+       * here — so the container, which docker-compose.yml offers as a way to
+       * self-host, served the landing page with no CSP, no frame protection
+       * and no referrer policy at all.
+       *
+       * Applied in code rather than by parsing _headers: the parse has to be
+       * right about Cloudflare's matching rules to be worth anything, and
+       * getting that subtly wrong is worse than a policy stated plainly here.
+       */
+      res.writeHead(200, {
+        'content-type': asset.type,
+        'cache-control': 'no-cache',
+        ...securityHeaders(url.pathname),
+      })
       res.end(asset.body)
       return
     }
