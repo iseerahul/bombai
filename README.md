@@ -4,8 +4,8 @@ A map of Mumbai you can ask questions of, keep your own pins on, and make plans
 from. Four things in one place:
 
 - **Ask map** — search every park, chai stall, gallery and ground in the city by
-  how you feel, not just by name. Walking, cycling, driving and transit
-  directions, with live navigation.
+  how you feel, not just by name. Walking, cycling and driving directions with
+  live navigation, plus a composed transit estimate (see Known limits).
 - **Been here** — pin the places you actually went, with photos and a note. Your
   own map of the city, plus the option to publish a spot for everyone.
 - **Hang out** — start something nearby, see who's around, land in the group chat.
@@ -52,9 +52,13 @@ Browser
 ├── MapLibre GL JS      ← vector tiles from OpenFreeMap (free, no API key)
 ├── /data/*.geojson     ← 19,336 places, baked at build time
 ├── src/search/         ← ranking runs here, on-device, no network call
-└── /api/*              → Cloudflare Worker ─┬─→ D1     (accounts, events, board)
-                                             ├─→ R2     (photos)
-                                             └─→ Photon / Wikimedia / Luma / AllEvents
+└── /api/*              → Cloudflare Worker ─┬─→ D1  (accounts, events, board)
+                                             ├─→ R2  (photos)
+                                             ├─→ Google OAuth        (sign-in)
+                                             ├─→ OpenRouteService    (directions)
+                                             ├─→ Photon, Nominatim   (geocoding)
+                                             ├─→ Wikipedia, Wikimedia (photos)
+                                             └─→ Luma, AllEvents, Ticketmaster (events)
 ```
 
 One origin in production: the Worker serves both front ends and `/api/*`, so
@@ -104,25 +108,36 @@ scored what it did:
 **Moods** ([`src/search/moods.ts`](src/search/moods.ts)) map a feeling onto OSM
 tags — *chill* → `leisure=park`, `leisure=garden`, `tourism=viewpoint`. Twelve
 shipped. Every weight is tied to a measured subtype count in the actual data,
-and moods whose tags had under 8% coverage were cut rather than shipped as a
-guess; the rejected ones and their coverage are documented in `NOT_SHIPPABLE`.
+and six candidates were cut rather than shipped as a guess. `NOT_SHIPPABLE` at
+the bottom of that file records each one and why: three because the tag they
+need is barely present (`internet_access` on 5.1% of food POIs,
+`outdoor_seating` on 7.9%, `air_conditioning` on 7.7%), three — *romantic*,
+*instagrammable*, *hidden gem* — because no OSM tag models them at all and only
+community votes would.
 
 **Typo tolerance** is a squashed-string match plus trigram Dice similarity, so
 `kitabkhana`, `kitab khana` and `Kitab Khana` all find the same shop.
 
 ### What the backend actually does
 
-D1 holds 27 tables across five features — accounts and sessions, the visit
-board, hangout activities and rooms, events, and trips. Photos go to R2, which
+D1 holds 27 tables. Twenty of them are the five features — accounts and
+sessions, the visit board, hangout activities and rooms, events, and trips. The
+other seven cut across all of them: `reports` (the civic reports this server
+originally existed for), `rate_limits`, `presence`, `blocks`, `abuse_reports`,
+and two caches, `geocode_cache` and `destination_cache`. Photos go to R2, which
 has no egress charge.
 
 Sign-in is Google OAuth (authorization-code flow) with opaque session cookies.
 You can browse the entire app signed out; the prompt appears at the moment you
 try to contribute something.
 
-**Events** are imported from Luma's public discovery feed and AllEvents'
-schema.org JSON-LD, classified into 12 categories, deduplicated, and refreshed on
-a cron. One deliberate choice: Luma reports `is_free: true` with a null price for
+**Events** come from three importers — Luma's public discovery feed, AllEvents'
+schema.org JSON-LD, and the Ticketmaster Discovery API — plus a curated seed
+file for the nights those three miss. Everything is classified into 12
+categories, deduplicated, and refreshed on a cron. Ticketmaster needs a free
+`TICKETMASTER_API_KEY`; without one that importer reports `not_configured` and
+the other two still run, which is survivable because its India coverage is thin
+anyway. One deliberate choice: Luma reports `is_free: true` with a null price for
 *every* event including paid conferences, so the importer drops the price rather
 than repeating it. "Price unknown" on a ticketed summit is a much better failure
 than "Free".
@@ -154,18 +169,23 @@ no pipeline run.
 Only re-run it when you want fresher data, roughly weekly:
 
 ```bash
-npm run data         # hits Overpass + the MCGM toilet dataset
-npm run data:civic   # just the small civic layers, faster
+npm run data         # all 17 layers: Overpass + the MCGM toilet dataset
+npm run data:civic   # only drinking_water, toilets, health, pharmacy
 ```
 
-It takes a couple of minutes and is deliberately polite (3s between queries,
-mirror failover). Run it manually — never from the app. It warns loudly if
-counts come back far below the baselines above, which means the pipeline broke
-rather than the city changing.
+`data:civic` is fewer queries, not a small job: `toilets` is in it, and at 8,638
+features that one layer is 44% of the whole dataset. It is the subset to run
+when you are iterating on the civic amenities, not a quick smoke test.
 
-```bash
-npm run data:civic   # just the small civic layers, for faster iteration
-```
+A full run takes a couple of minutes and is deliberately polite (3s between
+queries, mirror failover). Run it manually — never from the app.
+
+The sanity tripwire is narrow, so don't lean on it: `scripts/build-data.mjs`
+carries baselines for three layers only — `drinking_water` 76, `toilets` 361,
+`health` 2,016 — and warns just when a run returns under half of one. Those are
+raw Overpass counts measured during planning, which is why they don't match the
+shipped totals above (toilets gains ~8,300 from the MCGM merge). The other 14
+layers can come back empty without a word.
 
 ### 2. Configure
 
@@ -186,6 +206,25 @@ with `http://localhost:5173/api/auth/callback` as an authorised redirect URI.
 Leave `GOOGLE_CLIENT_ID` blank and the Worker enables a local dev login instead —
 which the test scripts need. The two are mutually exclusive on purpose: a sign-in
 bypass must never sit beside working auth.
+
+**`ORS_API_KEY` is optional, and directions don't work without it.** Routing is
+the one thing here that cannot be done on-device — the road graph is far too
+large to ship — so `/api/route` proxies OpenRouteService, whose free tier needs
+a key from
+[openrouteservice.org/dev/#/signup](https://openrouteservice.org/dev/#/signup).
+Add it to `.dev.vars`:
+
+```bash
+ORS_API_KEY=your-openrouteservice-key
+```
+
+Without it every route request returns `503 routing_not_configured` and the
+client degrades to straight lines between stops — walking, cycling and driving
+all collapse to the same crow-flies path, distances and times are guesses, and
+turn-by-turn navigation has no turns to give. The transit plan's walk legs go
+the same way. `/api/health` reports `routing: false` so the app can grey the
+feature out up front rather than quietly drawing lines through the sea.
+Everything else — search, pins, events, hangouts — is unaffected.
 
 ```bash
 node scripts/check-auth.mjs   # validates the credentials before you debug blind
@@ -286,6 +325,10 @@ cp .env.example .env     # fill in IP_SALT at minimum
 docker compose up --build
 ```
 
+Read the sign-in note at the end of this section before that first `up`: the
+container binds `0.0.0.0`, and with no Google credentials it deliberately
+refuses to start rather than serve a sign-in bypass to the network.
+
 Then open **http://localhost:8787** — landing at `/`, map at `/app/`, API at
 `/api/*`, all from the one container. That is the same single-origin layout as
 the Cloudflare deployment, which is what keeps "Explore Bambai" a plain link.
@@ -308,9 +351,25 @@ triggers, Durable Objects, KV, or platform limits. It runs this app's routes;
 deployment correctness is still `wrangler deploy`'s job. Production is
 Cloudflare — see step 6 above.
 
-If you expose it beyond your own machine, set real `GOOGLE_CLIENT_ID` and
-`GOOGLE_CLIENT_SECRET`. Leaving them blank switches the Worker to its local dev
-login, which is a sign-in bypass.
+**If you expose it beyond your own machine, fix the sign-in state first.** The
+dev login is a bypass — anyone who reaches it can become any user — and
+`devLoginAllowed` in `worker/auth.ts` turns it on only when *both* halves hold:
+no usable Google credentials (a real client id ends in
+`.apps.googleusercontent.com`, so placeholders don't count), **and** an
+`APP_ORIGIN` that is plain-http `localhost` or `127.0.0.1`. Fixing either half
+closes it, and a public box needs both fixed anyway: OAuth redirects and the
+cookie `Secure` flag are derived from `APP_ORIGIN`, so an origin that lies about
+being localhost cannot sign anyone in regardless.
+
+Cloning and running lands you in exactly that state: `docker-compose.yml`
+defaults `APP_ORIGIN` to `http://localhost:8787` and the Dockerfile binds
+`0.0.0.0`. So rather than hand out accounts quietly, `scripts/dev-server.mjs`
+refuses to start — bound to anything other than loopback with both halves still
+true, it prints the fix and exits. Fill in `GOOGLE_CLIENT_ID` and
+`GOOGLE_CLIENT_SECRET` in `.env` and it starts. `ALLOW_DEV_LOGIN=1` is the
+deliberate override for a trusted private network, and it re-announces on every
+boot that the bypass is open — but `docker-compose.yml` does not list it in
+`environment:`, so setting it in `.env` alone will not reach the container.
 
 ---
 
@@ -318,7 +377,7 @@ login, which is a sign-in bypass.
 
 ```
 mumbai-zenscape/          The landing page at / — vendored from Lovable, own deps
-static/_headers           Headers for the whole origin (both apps)
+static/_headers           Headers, incl. the CSP, for the whole origin
 dist/                     Build output: landing at /, map at /app/
 
 Dockerfile                Two-stage image; runtime is dist/ + the server script
@@ -330,13 +389,16 @@ scripts/build-worker.mjs  Bundles the Worker for the container image
 scripts/dev-server.mjs    Plain-Node stand-in for `wrangler dev`; serves dist/
 shared/categories.json    Single source of truth for categories (pipeline + app)
 
-worker/index.ts           Router, reports, CSP
-worker/auth.ts            Google OAuth, sessions
+worker/index.ts           Router, reports, /api/route (OpenRouteService proxy)
+worker/lib.ts             Shared Env type, rate limiting, coordinate checks
+worker/auth.ts            Google OAuth, sessions, the gated dev login
 worker/board.ts           Visits (private) and spots (public)
-worker/events.ts          Event list, filters, attendance
-worker/luma.ts            Luma importer + the shared category classifier
+worker/events.ts          Event list, Ticketmaster import, shared categories
+worker/luma.ts            Luma importer + its own keyword category rules
 worker/allevents.ts       AllEvents JSON-LD importer
-worker/social.ts          Activities, trips, destination groups
+worker/seed-events.ts     Curated recurring nights, always labelled `seed`
+worker/hangouts.ts        Activities at mapped venues; joining needs approval
+worker/social.ts          DMs, presence, trips, destination groups, blocks
 worker/rooms.ts           Group chat and DMs
 worker/geocode.ts         Photon, with Nominatim as strict fallback
 worker/destinations.ts    Place type-ahead + Wikipedia/Commons photos
@@ -344,9 +406,13 @@ worker/destinations.ts    Place type-ahead + Wikipedia/Commons photos
 src/search/               Local index, moods, ranking, query interpretation
 src/board/                Visit capture, photo prep (EXIF GPS), API client
 src/hangout/              Activities, trips, chat, profile
+src/chat/                 The ask panel — one input, moods, results as a rail
 src/events/               Event browsing and creation
 src/map/                  MapLibre view, markers, ambient animation, sprites
-src/nav/ src/trip/        Turn-by-turn navigation, route planning
+src/nav/ src/trip/        Turn-by-turn navigation, route planning, transit plans
+src/report/ src/reports/  Anonymous report sheet, and its API client
+src/config/               Category table and the on-device locality gazetteer
+src/privacy/              The disclosure dialog and geolocation handling
 src/detail/ src/ui/       Place cards, shared components
 ```
 
@@ -380,6 +446,14 @@ Stated here rather than discovered during a demo:
 - **Flood-spot coordinates are approximate** (~100–300m junction centroids,
   hand-compiled from documented locations). They warn "this area floods"; they
   cannot say a specific lane is under water.
+- **Transit is composed, not routed.** Walking, cycling and driving are real
+  OpenRouteService profiles; transit is not one. ORS has no transit profile and
+  neither the Metro nor the suburban rail publishes an openly usable timetable,
+  so `src/nav/transit.ts` builds the *shape* of the journey instead: a routed
+  walk to the nearest station, a straight line to the station nearest the
+  destination with a flat 30 km/h estimate and a 5-minute wait allowance, then
+  a routed walk out. It knows where the stations are, not when the trains run,
+  and everything downstream labels it an estimate.
 - **No flood-aware routing.** The app shows what to avoid. Rerouting around a
   mutating road graph is a separate project.
 - **`opening_hours` coverage in Mumbai is thin**, so "open now" is often unknown.
@@ -402,8 +476,9 @@ Stated here rather than discovered during a demo:
 - Basemap tiles by [OpenFreeMap](https://openfreemap.org/)
 - MCGM public toilet records via [data.opencity.in](https://data.opencity.in/dataset/mumbai-public-toilets-map) (public domain)
 - Place photos from Wikipedia and Wikimedia Commons (CC-licensed)
-- Event listings from [Luma](https://lu.ma) and [AllEvents](https://allevents.in)
+- Event listings from [Luma](https://lu.ma), [AllEvents](https://allevents.in) and the [Ticketmaster Discovery API](https://developer.ticketmaster.com/products-and-docs/apis/discovery-api/v2/)
 - Geocoding by [Photon](https://photon.komoot.io/) and [Nominatim](https://nominatim.openstreetmap.org/)
+- Directions by [OpenRouteService](https://openrouteservice.org/) (free tier, key required)
 - Flood-prone locations: hand-compiled reference list, not an official dataset
 
 No ads, no sponsored pins, no paid placement.

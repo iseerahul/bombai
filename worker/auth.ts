@@ -62,6 +62,10 @@ function oauthCreds(env: Env): { id: string; secret: string } | null {
  * not an auth mechanism: anyone who can reach it can become anyone.
  */
 function devLoginAllowed(env: Env): boolean {
+  // Set by the Node shim when it is bound to a public interface, which is
+  // every container. Fails closed: a deployment has to ask for the bypass
+  // rather than inherit it from a default APP_ORIGIN nobody changed.
+  if (env.DEV_LOGIN_DISABLED === '1') return false
   if (oauthCreds(env)) return false
   const origin = (env.APP_ORIGIN ?? '').trim()
   return /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)

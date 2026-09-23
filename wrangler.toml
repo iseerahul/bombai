@@ -41,5 +41,4 @@ crons = ["0 3 * * *"]
 enabled = true
 
 # Secrets are NOT set here. Set them out of band so they never enter git:
-#   wrangler secret put GEMINI_API_KEY
 #   wrangler secret put IP_SALT

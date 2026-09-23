@@ -446,52 +446,24 @@ const HOST = process.env.HOST ?? '127.0.0.1'
 const LOOPBACK = HOST === '127.0.0.1' || HOST === '::1' || HOST === 'localhost'
 
 /*
- * Refuse to serve an auth bypass to the internet.
+ * Never serve the sign-in bypass to a network unasked.
  *
  * worker/auth.ts enables a dev sign-in shortcut when there are no Google
- * credentials AND APP_ORIGIN is a plain-http localhost URL — on your own
- * machine that is a convenience, and its own comment is blunt about what it
- * is: "anyone who can reach it can become anyone."
+ * credentials and APP_ORIGIN is a plain-http localhost URL. Its own comment is
+ * blunt about what that is: "anyone who can reach it can become anyone."
  *
- * Bind to a public interface while that combination holds and the shortcut is
- * reachable from the network. The default APP_ORIGIN in docker-compose.yml is
- * a localhost URL, so this is the state you land in by cloning and running.
+ * A container is always bound to 0.0.0.0 internally, and docker-compose.yml
+ * defaults APP_ORIGIN to a localhost URL — so cloning the repo onto a server
+ * and running it lands in exactly that state. Refusing to start was the first
+ * attempt and it was wrong: it also broke running the container on your own
+ * laptop, which is the common case and perfectly safe.
  *
- * It is also broken anyway: OAuth redirects and cookie Secure flags are both
- * derived from APP_ORIGIN, so a public deployment claiming to be localhost
- * cannot sign anyone in regardless. Failing here with the fix in hand beats
- * starting and quietly handing out accounts.
+ * So it fails closed instead of failing loudly. The bypass is switched off for
+ * any non-loopback bind, the app still starts and still works, and anyone who
+ * genuinely wants the shortcut on a trusted network asks for it by name.
  */
-if (!LOOPBACK) {
-  const id = (env.GOOGLE_CLIENT_ID ?? '').trim()
-  const hasGoogle = /\.apps\.googleusercontent\.com$/.test(id)
-  const origin = (env.APP_ORIGIN ?? '').trim()
-  const originIsLocal = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
-
-  if (!hasGoogle && originIsLocal) {
-    console.error(
-      [
-        '',
-        '  REFUSING TO START',
-        '',
-        `  Bound to ${HOST} (reachable from the network), but APP_ORIGIN is`,
-        `  ${origin || '(unset)'} and no Google credentials are set.`,
-        '',
-        '  That combination switches on the dev sign-in shortcut, which lets',
-        '  anyone who can reach this server become any user.',
-        '',
-        '  Set APP_ORIGIN to the URL people actually use, for example:',
-        `    APP_ORIGIN=http://<your-public-host>:${PORT}`,
-        '',
-        '  and add GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET for real sign-in.',
-        '  To override deliberately on a trusted private network:',
-        '    ALLOW_DEV_LOGIN=1',
-        '',
-      ].join(String.fromCharCode(10))
-    )
-    if (process.env.ALLOW_DEV_LOGIN !== '1') process.exit(1)
-    console.error('  ALLOW_DEV_LOGIN=1 set - continuing with the bypass OPEN.')
-  }
+if (!LOOPBACK && process.env.ALLOW_DEV_LOGIN !== '1') {
+  env.DEV_LOGIN_DISABLED = '1'
 }
 
 server.listen(PORT, HOST, () => {

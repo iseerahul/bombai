@@ -13,7 +13,6 @@ export interface Env {
    * uploads return 503 rather than the whole Worker failing to boot.
    */
   PHOTOS?: R2Bucket
-  GEMINI_API_KEY: string
   /** Random secret; `wrangler secret put IP_SALT`. Rotating it resets all buckets. */
   IP_SALT: string
   /**
@@ -31,6 +30,8 @@ export interface Env {
    * not the origin Google must redirect back to.
    */
   APP_ORIGIN?: string
+  /** '1' switches off the dev sign-in shortcut regardless of anything else. */
+  DEV_LOGIN_DISABLED?: string
 
   /**
    * Ticketmaster Discovery API key for the Events source. Optional — without

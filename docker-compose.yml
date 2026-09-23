@@ -36,6 +36,12 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
 
+      # The dev sign-in shortcut is OFF in a container, always, because a
+      # container is reachable from outside itself and the shortcut lets anyone
+      # become any user. Set this to 1 only on a trusted private network where
+      # you want the shortcut back.
+      ALLOW_DEV_LOGIN: ${ALLOW_DEV_LOGIN:-}
+
     volumes:
       # Everything that must outlive the container: the SQLite database and
       # every uploaded photo. Without this, `docker compose down` deletes every

@@ -123,7 +123,7 @@ export interface RouteResult {
   approximate?: boolean
 }
 
-/** What the LLM (or the local fallback parser) resolved the question into. */
+/** What the on-device parser resolved the question into. */
 export type Interpretation =
   | {
       mode: 'search'
@@ -136,33 +136,8 @@ export type Interpretation =
       local: boolean
     }
   | {
-      mode: 'recommend'
-      categories: string[]
-      area: string | null
-      picks: { id: string; why: string }[]
-      reply: string
-      caveat: string
-      local: false
-    }
-  | {
       mode: 'trip'
       stops: StopSpec[]
       reply: string
       local: boolean
     }
-
-export interface ChatTurn {
-  id: string
-  role: 'user' | 'app'
-  text: string
-  /** Results attached to an app turn. */
-  results?: Poi[]
-  interpretation?: Interpretation
-  /**
-   * Per-result reasons, keyed by POI id: ["park", "310 m", "open now"].
-   * Populated by the local ranker; every entry is a fact, not a judgement.
-   */
-  explanations?: Record<string, string[]>
-  error?: string
-  pending?: boolean
-}

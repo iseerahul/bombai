@@ -9,8 +9,10 @@ interface PrivacyDialogProps {
  * The honesty page.
  *
  * The rule here: every claim must be something the code actually enforces, and
- * the one real leak (question text reaching Google) is stated plainly rather
- * than buried. A privacy page that overclaims is worse than none.
+ * the things that do leave the device are stated plainly rather than buried. A
+ * privacy page that overclaims is worse than none — which is why this file
+ * changes whenever the code does. It used to disclose question text reaching
+ * Google's Gemini API; that call no longer exists, so that claim is gone too.
  *
  * The layout follows that rule too — "what leaves the device" is not tucked
  * below the reassuring part, it sits at equal weight with its own colour.
@@ -113,6 +115,12 @@ export default function PrivacyDialog({ onClose }: PrivacyDialogProps) {
                 a coordinate anywhere. (Trip routing is the one exception — see
                 below.)
               </Claim>
+              <Claim lead="The words you type.">
+                Searching is arithmetic over map files already on your phone —
+                your question is read, matched and ranked here, and never sent
+                anywhere. An earlier version passed it to Google's Gemini API to
+                work out what you meant; that is gone, and so is the key for it.
+              </Claim>
               <Claim lead="Which areas you look up.">
                 “Andheri East” is resolved against a list of localities shipped
                 inside the app, not a geocoding service.
@@ -122,13 +130,17 @@ export default function PrivacyDialog({ onClose }: PrivacyDialogProps) {
 
           <Section icon="alert" title="What does get sent, and where" tone="caution">
             <ul className="space-y-2">
-              <Claim lead="Your question text">
-                goes to our server, which passes it to Google's Gemini API to work
-                out what you meant. Google receives the words you typed. It does
-                not receive your location, your identity, or anything linking one
-                question to another.
+              <Claim lead="A place name nothing here matches.">
+                The app carries fifteen categories; OpenStreetMap has hundreds.
+                So if you name something we never packed — a bookshop, a salon —
+                and nothing on your phone matches, that name alone is sent to our
+                server and on to OpenStreetMap's public geocoders to look up.
+                Only the name: not the rest of your question, not your location,
+                not anything identifying you. It is cached by name, so the same
+                lookup isn't asked twice. This runs only after the on-device
+                search has come back with nothing.
               </Claim>
-              <Claim lead="Trip routes are the exception to everything above.">
+              <Claim lead="Trip routes, and only trip routes, send your location.">
                 Walking directions cannot be worked out on your phone — the road
                 network is far too large to download — so when you plan a trip,
                 the coordinates of your stops are sent to OpenRouteService through
@@ -148,9 +160,8 @@ export default function PrivacyDialog({ onClose }: PrivacyDialogProps) {
               </Claim>
             </ul>
             <p className="mt-2.5 text-xs leading-relaxed text-subtle">
-              If a question can be understood without help, the app answers it on
-              your device and skips the network call entirely. It'll tell you which
-              happened under each answer.
+              That is the whole list. An ordinary search — one the map files can
+              answer, which is nearly all of them — touches none of it.
             </p>
           </Section>
 
@@ -206,14 +217,16 @@ export default function PrivacyDialog({ onClose }: PrivacyDialogProps) {
           <section className="mt-5 rounded-card border border-line bg-sunken p-3.5">
             <h3 className="flex items-center gap-1.5 text-sm font-semibold">
               <Icon name="sparkle" size={14} className="text-accent" />
-              About the AI suggestions
+              How results get ordered
             </h3>
             <p className="mt-1.5 text-sm leading-relaxed text-muted">
-              When you ask for the “best” of something, the AI may only choose from
-              places already in this app's OpenStreetMap dataset — the server
-              discards anything else it tries to name. It has no reviews, ratings,
-              or visit data, so treat those suggestions as a starting point, not a
-              verdict. Community reports are the only verified signal here.
+              No model chooses for you. The order is a fixed sum your phone works
+              out: how far away a place is, how well its name matches, whether
+              it's open now, and what community reports say. That's why every
+              result carries a line saying why it's there — anything that can't be
+              explained shouldn't be ranked. Nothing here has reviews, ratings or
+              visit data, so treat the order as a starting point, not a verdict.
+              Community reports are the only verified signal.
             </p>
           </section>
 
