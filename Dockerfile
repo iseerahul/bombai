@@ -58,6 +58,9 @@ COPY --from=build /build/worker/schema.sql ./worker/schema.sql
 ENV DATA_DIR=/data
 # Skips esbuild at boot — the bundle was built in stage 1.
 ENV WORKER_BUNDLE=/app/dist/worker.mjs
+# Without this the server binds the CONTAINER's loopback, the published port
+# reaches nothing, and every request returns an empty reply.
+ENV HOST=0.0.0.0
 RUN mkdir -p /data && chown -R node:node /data /app
 
 # `node` rather than root: this process serves uploads and runs a SQL database.

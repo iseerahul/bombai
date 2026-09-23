@@ -395,6 +395,22 @@ const server = createServer(async (req, res) => {
     body,
   })
 
+  /*
+   * Rate limiting keys off CF-Connecting-IP. On Cloudflare the edge sets that
+   * header and discards any copy the client sent, so it can be trusted. Here
+   * there is no edge, and every inbound header is forwarded verbatim — so a
+   * caller could mint a fresh rate-limit bucket per request just by varying
+   * it, defeating every limit in the app at once.
+   *
+   * Overwritten unconditionally from the socket the bytes actually arrived on.
+   * Set after construction because a Request's headers are immutable in the
+   * initialiser but not afterwards.
+   */
+  request.headers.set(
+    'CF-Connecting-IP',
+    (req.socket?.remoteAddress ?? '127.0.0.1').replace(/^::ffff:/, '')
+  )
+
   try {
     const response = await worker.fetch(request, env, ctx)
     const headers = {}
@@ -417,7 +433,19 @@ const server = createServer(async (req, res) => {
   }
 })
 
-server.listen(PORT, '127.0.0.1', () => {
+/*
+ * Loopback by default: this shim has none of the platform's protections and
+ * should not be casually reachable from a network.
+ *
+ * A container must override it. Inside one, 127.0.0.1 is the container's own
+ * loopback, so a published port reaches nothing and every request dies with
+ * an empty reply — which is exactly what it did. The Dockerfile sets
+ * HOST=0.0.0.0 for that reason.
+ */
+const HOST = process.env.HOST ?? '127.0.0.1'
+const LOOPBACK = HOST === '127.0.0.1' || HOST === '::1' || HOST === 'localhost'
+
+server.listen(PORT, HOST, () => {
   console.log(`\n  Worker (Node shim)  http://127.0.0.1:${PORT}`)
   console.log(`  D1                  ${dbPath.replace(ROOT, '.')}`)
   console.log(`  Secrets             ${Object.keys(loadDevVars()).length} from .dev.vars`)
