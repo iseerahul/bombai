@@ -1,0 +1,68 @@
+# nginx in front of the app, with a Let's Encrypt certificate.
+#
+# The official nginx image runs envsubst over everything in
+# /etc/nginx/templates. NGINX_ENVSUBST_FILTER is set to SITE_ADDRESS in
+# docker-compose.nginx.yml so ONLY that gets substituted — without the filter
+# envsubst would also eat $host, $scheme and $remote_addr below and leave the
+# proxy passing empty headers.
+
+# --- port 80: ACME challenges, and a push to HTTPS for everything else ------
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${SITE_ADDRESS};
+
+    # Must stay reachable for the life of the deployment, not just at setup:
+    # this is how renewal is proved every 60 days too.
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# --- port 443: the app ------------------------------------------------------
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name ${SITE_ADDRESS};
+
+    ssl_certificate     /etc/letsencrypt/live/${SITE_ADDRESS}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${SITE_ADDRESS}/privkey.pem;
+
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # Photos are the large uploads here; the app caps them at 2 MB each and
+    # six per visit. nginx's default of 1 MB would reject them with a 413
+    # before the app ever saw the request.
+    client_max_body_size 16m;
+
+    location / {
+        proxy_pass http://bambai:8787;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host  $host;
+
+        # The event importer fans out to four upstreams on a refresh and can
+        # take well over nginx's default 60s. A 504 there leaves the import
+        # half-done with no way to tell.
+        proxy_connect_timeout 10s;
+        proxy_send_timeout    120s;
+        proxy_read_timeout    120s;
+
+        # No buffering of responses: the app streams nothing today, but
+        # buffering a large GeoJSON to disk before sending is pure latency.
+        proxy_buffering off;
+    }
+}

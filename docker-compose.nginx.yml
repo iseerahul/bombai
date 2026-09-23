@@ -1,0 +1,119 @@
+# Bambai behind nginx, with a Let's Encrypt certificate.
+#
+#   docker compose -f docker-compose.nginx.yml up --build -d
+#
+# Use this INSTEAD of docker-compose.yml. There is also docker-compose.https.yml,
+# which does the same job with Caddy in about a quarter of the configuration —
+# Caddy obtains and renews certificates itself. This file exists because nginx
+# is what most people already know and already run.
+#
+# The extra machinery here is not incidental complexity, it is the real
+# difference between the two: nginx refuses to start when ssl_certificate
+# points at a file that does not exist, and certbot cannot create that file
+# until something answers on port 80. So there are three pieces instead of one
+# — a bootstrap that writes a throwaway self-signed certificate, certbot to
+# replace it and renew it, and a reload loop so nginx picks up the renewal.
+#
+# BEFORE YOU START:
+#   1. Security group: open 80 and 443. Port 80 is not optional — it carries
+#      the ACME challenge at setup AND at every renewal. Close 3000 and 8787.
+#   2. In .env:
+#        SITE_ADDRESS=13.203.232.95.sslip.io        (your IP, then .sslip.io)
+#        APP_ORIGIN=https://13.203.232.95.sslip.io
+#        LETSENCRYPT_EMAIL=you@example.com          (expiry warnings go here)
+#      APP_ORIGIN must match exactly: the Worker builds OAuth redirects from
+#      it and decides whether to mark session cookies Secure from it.
+#   3. Google Cloud → Authorised redirect URI:
+#        https://13.203.232.95.sslip.io/api/auth/callback
+#
+# No CA issues certificates for a bare IP. sslip.io resolves any hostname
+# containing an IP to that IP, so 13.203.232.95.sslip.io is a real, stable
+# hostname Let's Encrypt will sign.
+
+services:
+  bambai:
+    build: .
+    image: bambai:local
+    # No `ports`: nginx reaches it over the Docker network and nothing else
+    # can. Publishing it here would leave the same app in clear text beside
+    # the encrypted one.
+    expose:
+      - "8787"
+    environment:
+      APP_ORIGIN: ${APP_ORIGIN:?set APP_ORIGIN to your https:// URL in .env}
+      IP_SALT: ${IP_SALT:?set IP_SALT in .env or the environment}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      ALLOW_DEV_LOGIN: ${ALLOW_DEV_LOGIN:-}
+      ORS_API_KEY: ${ORS_API_KEY:-}
+      TICKETMASTER_API_KEY: ${TICKETMASTER_API_KEY:-}
+    volumes:
+      - bambai-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  # One-shot. Writes a self-signed placeholder ONLY if no certificate exists,
+  # so nginx has something to open on the first ever start. Runs in the
+  # certbot image because that has openssl and the nginx image does not.
+  cert-bootstrap:
+    image: certbot/certbot:latest
+    entrypoint: ["/bin/sh", "/bootstrap-cert.sh"]
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env, e.g. 13.203.232.95.sslip.io}
+    volumes:
+      - ./nginx/bootstrap-cert.sh:/bootstrap-cert.sh:ro
+      - letsencrypt:/etc/letsencrypt
+    restart: "no"
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env}
+      # Without this filter envsubst substitutes EVERY $-name in the template,
+      # including nginx's own $host and $remote_addr, and the proxy ends up
+      # forwarding empty headers.
+      NGINX_ENVSUBST_FILTER: "SITE_ADDRESS"
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates:ro
+      - ./nginx/entrypoint/99-reload-for-renewals.sh:/docker-entrypoint.d/99-reload-for-renewals.sh:ro
+      - letsencrypt:/etc/letsencrypt:ro
+      - certbot-webroot:/var/www/certbot:ro
+    depends_on:
+      cert-bootstrap:
+        condition: service_completed_successfully
+      bambai:
+        condition: service_started
+    restart: unless-stopped
+
+  # Obtains the real certificate, then wakes every 12h to renew. certbot only
+  # acts when a certificate is within 30 days of expiry, so the loop is cheap
+  # and there is no cron to forget.
+  certbot:
+    image: certbot/certbot:latest
+    entrypoint: ["/bin/sh", "/renew-loop.sh"]
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:?set LETSENCRYPT_EMAIL in .env — Let us Encrypt sends expiry warnings there}
+    volumes:
+      - ./nginx/renew-loop.sh:/renew-loop.sh:ro
+      - letsencrypt:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
+    depends_on:
+      - nginx
+    restart: unless-stopped
+
+volumes:
+  bambai-data:
+  # The certificate AND the ACME account key. Deleting this asks Let's Encrypt
+  # for a fresh certificate on every restart, and the limit is five per
+  # hostname per week.
+  letsencrypt:
+  certbot-webroot:

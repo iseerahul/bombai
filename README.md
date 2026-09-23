@@ -380,10 +380,26 @@ Geolocation API to secure contexts, so the locate button and live navigation
 silently do nothing on every device except localhost. Google also refuses
 non-HTTPS OAuth redirect URIs.
 
-`docker-compose.https.yml` puts Caddy in front of the app and gets a Let's
-Encrypt certificate automatically. Use it *instead of* `docker-compose.yml` —
-Compose merges `ports` by appending, so an overlay could not take the app's own
-8787 back off the public interface.
+There are two ways to do it, both replacing `docker-compose.yml` rather than
+overlaying it (Compose merges `ports` by appending, so an overlay could not take
+the app's own 8787 back off the public interface):
+
+| File | Proxy | Why you'd pick it |
+|---|---|---|
+| `docker-compose.https.yml` | Caddy | One service, ~40 lines. Caddy obtains and renews certificates itself. |
+| `docker-compose.nginx.yml` | nginx + certbot | You already know nginx, or you need its config surface. |
+
+**They produce the same result.** The nginx version needs three services rather
+than one, and that difference is real rather than incidental: nginx refuses to
+start when `ssl_certificate` points at a file that does not exist, and certbot
+cannot create that file until something answers on port 80. So it needs a
+bootstrap that writes a throwaway self-signed certificate, certbot to replace
+and renew it, and a reload loop — because nginx holds the old certificate open
+and would otherwise start failing exactly 90 days in.
+
+With nginx, also set `LETSENCRYPT_EMAIL` in `.env`. Let's Encrypt sends expiry
+warnings there, which is the one thing that tells you renewal has quietly
+stopped working before the site goes down.
 
 **With no domain of your own**, use sslip.io: a public DNS service that resolves
 any hostname containing an IP to that IP. `13.203.232.95.sslip.io` is a real,
@@ -401,17 +417,26 @@ Then add `https://13.203.232.95.sslip.io/api/auth/callback` to the Authorised
 redirect URIs in Google Cloud, and:
 
 ```bash
+# Caddy
 docker compose -f docker-compose.https.yml up --build -d
-docker compose -f docker-compose.https.yml logs -f caddy   # watch it get the cert
+docker compose -f docker-compose.https.yml logs -f caddy
+
+# or nginx
+docker compose -f docker-compose.nginx.yml up --build -d
+docker compose -f docker-compose.nginx.yml logs -f certbot
 ```
+
+Watch that log. With nginx the site is briefly served with the self-signed
+placeholder — a browser warning — until certbot's first run replaces it,
+usually within a minute.
 
 `APP_ORIGIN` has to match the URL exactly. The Worker builds its OAuth
 redirects from that string and decides whether to mark session cookies
 `Secure` from it — an `http://` value behind a TLS proxy ships the session
 cookie unprotected over a connection the browser believes is encrypted.
 
-The `caddy-data` volume holds the certificate and the ACME account key. Do not
-delete it casually: Let's Encrypt allows five certificates per hostname per
+The `caddy-data` volume (or `letsencrypt` with nginx) holds the certificate and
+the ACME account key. Do not delete it casually: Let's Encrypt allows five certificates per hostname per
 week, and a restart loop without that volume will exhaust them.
 
 **With your own domain**, it is the same file — point an A record at the
@@ -429,7 +454,9 @@ dist/                     Build output: landing at /, map at /app/
 Dockerfile                Two-stage image; runtime is dist/ + the server script
 docker-compose.yml        Self-hosting: one container, one volume for state
 docker-compose.https.yml  The same, behind Caddy with a Let's Encrypt cert
-Caddyfile                 Reverse proxy + automatic TLS
+docker-compose.nginx.yml  The same, behind nginx + certbot
+Caddyfile                 Caddy: reverse proxy + automatic TLS
+nginx/                    nginx: config template, cert bootstrap, renew loop
 
 scripts/build-data.mjs    Overpass + MCGM → static GeoJSON (build-time only)
 scripts/build-landing.mjs Prerenders the landing and folds it into dist/

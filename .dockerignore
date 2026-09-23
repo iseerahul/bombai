@@ -43,5 +43,7 @@ scripts/test-*.mjs
 Dockerfile
 docker-compose.yml
 docker-compose.https.yml
+docker-compose.nginx.yml
 Caddyfile
+nginx/
 .dockerignore
