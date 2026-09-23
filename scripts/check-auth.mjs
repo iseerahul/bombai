@@ -26,21 +26,62 @@ const bad = (msg, fix) => {
 
 console.log('\nChecking Google sign-in setup\n')
 
-// --- 1. the file ---
-const path = join(ROOT, '.dev.vars')
-if (!existsSync(path)) {
-  bad('.dev.vars is missing', 'Create it in the project root.')
-  process.exit(1)
+/*
+ * Where the settings live depends on how you run it, and this check is most
+ * useful in the case it used to ignore:
+ *
+ *   .dev.vars    local development
+ *   .env         docker compose
+ *   environment  a container, or CI
+ *
+ * It only read .dev.vars, so on a Docker deployment — exactly where a
+ * redirect_uri_mismatch is most likely, because APP_ORIGIN is a real URL
+ * there rather than localhost — it exited saying the file was missing and
+ * checked nothing at all.
+ */
+function parseEnvFile(file) {
+  const out = {}
+  if (!existsSync(file)) return out
+  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
+    const t = line.trim()
+    if (!t || t.startsWith('#')) continue
+    const eq = t.indexOf('=')
+    if (eq < 1) continue
+    // Strip surrounding quotes: .env files often carry them, and a quoted
+    // APP_ORIGIN produces a redirect URI that can never match.
+    const value = t
+      .slice(eq + 1)
+      .trim()
+      .replace(/^["'](.*)["']$/, '$1')
+    out[t.slice(0, eq).trim().replace(/^\uFEFF/, '')] = value
+  }
+  return out
 }
 
-const vars = {}
-for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
-  const t = line.trim()
-  if (!t || t.startsWith('#')) continue
-  const eq = t.indexOf('=')
-  if (eq < 1) continue
-  vars[t.slice(0, eq).replace(/^﻿/, '').trim()] = t.slice(eq + 1).trim()
+const devVars = parseEnvFile(join(ROOT, '.dev.vars'))
+const dotEnv = parseEnvFile(join(ROOT, '.env'))
+const sources = []
+if (Object.keys(devVars).length) sources.push('.dev.vars')
+if (Object.keys(dotEnv).length) sources.push('.env')
+
+// Later wins, and a real environment variable beats both — the same order the
+// container resolves them in.
+const vars = { ...devVars, ...dotEnv }
+for (const k of ['APP_ORIGIN', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'ORS_API_KEY']) {
+  if (process.env[k]) {
+    vars[k] = process.env[k]
+    if (!sources.includes('environment')) sources.push('environment')
+  }
 }
+
+if (!sources.length) {
+  bad(
+    'Found no settings at all',
+    'Expected .dev.vars (local) or .env (docker compose) in the project root.'
+  )
+  process.exit(1)
+}
+console.log(`  reading from: ${sources.join(', ')}\n`)
 
 // --- 2. client id ---
 const id = vars.GOOGLE_CLIENT_ID ?? ''
@@ -101,6 +142,24 @@ try {
   }
 } catch {
   bad('Could not reach the API on :8787', 'Start it: node scripts/dev-server.mjs')
+}
+
+/*
+ * Routing, checked here rather than in a script of its own.
+ *
+ * Without ORS_API_KEY the app does not fail — it draws a straight line and
+ * labels it an estimate, which is easy to mistake for the feature working
+ * badly rather than not being switched on. And the key appears in none of the
+ * example env files by default, so this is the only thing that says so.
+ */
+const ors = (vars.ORS_API_KEY ?? '').trim()
+if (!ors) {
+  console.log('')
+  console.log('  ! ORS_API_KEY is not set - walking, cycling and driving directions')
+  console.log('    fall back to straight lines with guessed distances and times.')
+  console.log('    Free key, no card: https://openrouteservice.org/dev/#/signup')
+} else {
+  ok(`ORS_API_KEY is present - real directions enabled (${ors.length} chars)`)
 }
 
 console.log(
