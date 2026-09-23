@@ -1,0 +1,74 @@
+# Bambai behind HTTPS.
+#
+#   docker compose -f docker-compose.https.yml up --build -d
+#
+# Use this INSTEAD of docker-compose.yml, not alongside it. Compose merges
+# `ports` by appending rather than replacing, so an overlay could not take the
+# app's own 8787 back off the public interface — and leaving it there would
+# mean the same app reachable over plain HTTP next to the encrypted one.
+#
+# WHY YOU WANT THIS, beyond encryption: browsers only hand the Geolocation API
+# to secure contexts. Over plain HTTP the locate button and live navigation
+# silently do nothing, on every device except localhost. Google also refuses
+# non-HTTPS OAuth redirect URIs unless they point at localhost.
+#
+# BEFORE YOU START:
+#   1. In the EC2 security group, open 80 and 443 (Custom TCP, 0.0.0.0/0).
+#      Port 80 is not optional — that is where the ACME challenge arrives.
+#      You can close 3000 and 8787; nothing needs them any more.
+#   2. In .env, set:
+#        SITE_ADDRESS=13.203.232.95.sslip.io      (your IP, then .sslip.io)
+#        APP_ORIGIN=https://13.203.232.95.sslip.io
+#      APP_ORIGIN must match exactly — the Worker builds OAuth redirects and
+#      decides whether to mark cookies Secure from that string alone.
+#   3. In Google Cloud, add the Authorised redirect URI:
+#        https://13.203.232.95.sslip.io/api/auth/callback
+
+services:
+  bambai:
+    build: .
+    image: bambai:local
+    # Deliberately no `ports`. Caddy reaches it over the Docker network; the
+    # container is not exposed to the host at all.
+    expose:
+      - "8787"
+    environment:
+      APP_ORIGIN: ${APP_ORIGIN:?set APP_ORIGIN to your https:// URL in .env}
+      IP_SALT: ${IP_SALT:?set IP_SALT in .env or the environment}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      ALLOW_DEV_LOGIN: ${ALLOW_DEV_LOGIN:-}
+      ORS_API_KEY: ${ORS_API_KEY:-}
+      TICKETMASTER_API_KEY: ${TICKETMASTER_API_KEY:-}
+    volumes:
+      - bambai-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env, e.g. 13.203.232.95.sslip.io}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # The issued certificate and the ACME account key. Without this volume
+      # every restart asks Let's Encrypt for a fresh certificate, and their
+      # rate limit is five per hostname per week — you would lock yourself out.
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - bambai
+    restart: unless-stopped
+
+volumes:
+  bambai-data:
+  caddy-data:
+  caddy-config:

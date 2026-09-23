@@ -373,6 +373,52 @@ boot that the bypass is open — but `docker-compose.yml` does not list it in
 
 ---
 
+## Serving it over HTTPS
+
+Plain HTTP is not just insecure here, it is **broken**: browsers only give the
+Geolocation API to secure contexts, so the locate button and live navigation
+silently do nothing on every device except localhost. Google also refuses
+non-HTTPS OAuth redirect URIs.
+
+`docker-compose.https.yml` puts Caddy in front of the app and gets a Let's
+Encrypt certificate automatically. Use it *instead of* `docker-compose.yml` —
+Compose merges `ports` by appending, so an overlay could not take the app's own
+8787 back off the public interface.
+
+**With no domain of your own**, use sslip.io: a public DNS service that resolves
+any hostname containing an IP to that IP. `13.203.232.95.sslip.io` is a real,
+stable hostname, so a CA will issue for it — which a bare IP can never be.
+
+```bash
+# .env
+SITE_ADDRESS=13.203.232.95.sslip.io
+APP_ORIGIN=https://13.203.232.95.sslip.io
+```
+
+Open **80 and 443** in the security group. Port 80 is not optional — that is
+where the ACME challenge arrives. Close 3000 and 8787; nothing needs them now.
+Then add `https://13.203.232.95.sslip.io/api/auth/callback` to the Authorised
+redirect URIs in Google Cloud, and:
+
+```bash
+docker compose -f docker-compose.https.yml up --build -d
+docker compose -f docker-compose.https.yml logs -f caddy   # watch it get the cert
+```
+
+`APP_ORIGIN` has to match the URL exactly. The Worker builds its OAuth
+redirects from that string and decides whether to mark session cookies
+`Secure` from it — an `http://` value behind a TLS proxy ships the session
+cookie unprotected over a connection the browser believes is encrypted.
+
+The `caddy-data` volume holds the certificate and the ACME account key. Do not
+delete it casually: Let's Encrypt allows five certificates per hostname per
+week, and a restart loop without that volume will exhaust them.
+
+**With your own domain**, it is the same file — point an A record at the
+instance and set `SITE_ADDRESS` to the domain instead.
+
+---
+
 ## Project layout
 
 ```
@@ -382,6 +428,8 @@ dist/                     Build output: landing at /, map at /app/
 
 Dockerfile                Two-stage image; runtime is dist/ + the server script
 docker-compose.yml        Self-hosting: one container, one volume for state
+docker-compose.https.yml  The same, behind Caddy with a Let's Encrypt cert
+Caddyfile                 Reverse proxy + automatic TLS
 
 scripts/build-data.mjs    Overpass + MCGM → static GeoJSON (build-time only)
 scripts/build-landing.mjs Prerenders the landing and folds it into dist/

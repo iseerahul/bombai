@@ -1,0 +1,40 @@
+# TLS in front of the app container.
+#
+# Caddy obtains and renews a Let's Encrypt certificate on its own — there is
+# nothing to run by hand and nothing that expires in 90 days while you are not
+# looking. It needs two things: port 80 reachable from the internet (that is
+# where the ACME challenge arrives) and a hostname that resolves to this box.
+#
+# SITE_ADDRESS is that hostname. With no domain of your own, use sslip.io,
+# which is a public DNS service that answers any name containing an IP with
+# that IP:
+#
+#   SITE_ADDRESS=13.203.232.95.sslip.io   ->  resolves to 13.203.232.95
+#
+# That is a real, stable hostname, so Let's Encrypt will issue for it and the
+# URL survives restarts — which matters because Google OAuth redirect URIs have
+# to be registered in advance and cannot be a URL that changes.
+#
+# A bare IP cannot work here: no public CA issues certificates for IP
+# addresses, so `SITE_ADDRESS=13.203.232.95` would leave Caddy serving its own
+# self-signed cert and every browser showing a warning.
+
+{$SITE_ADDRESS} {
+	# The app speaks plain HTTP inside the Docker network; only this hop is
+	# encrypted, and that is the hop that crosses the internet.
+	reverse_proxy bambai:8787
+
+	# The Worker builds its own redirects and cookie flags from APP_ORIGIN
+	# rather than from request headers, so it does not need X-Forwarded-*
+	# to behave correctly — but pass them anyway so logs and any future
+	# middleware see the truth.
+	header_up X-Forwarded-Proto {scheme}
+	header_up X-Forwarded-Host {host}
+
+	encode gzip zstd
+
+	log {
+		output stdout
+		format console
+	}
+}

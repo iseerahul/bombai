@@ -42,4 +42,6 @@ scripts/pilot-results.json
 scripts/test-*.mjs
 Dockerfile
 docker-compose.yml
+docker-compose.https.yml
+Caddyfile
 .dockerignore
