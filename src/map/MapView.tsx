@@ -185,6 +185,14 @@ export default function MapView({
   const socialMarkersRef = useRef<maplibregl.Marker[]>([])
   const resultsRef = useRef(results)
   const ambientRef = useRef(ambientPois)
+  /*
+   * The recentre effect reads the newest position from these rather than from
+   * its dependency list: `recenterSignal` never returns to zero, so listing the
+   * fixes as dependencies made every GPS update re-fire the camera and undo a
+   * deliberate pan during navigation.
+   */
+  const liveFixRef = useRef(liveFix)
+  const userFixRef = useRef(userFix)
 
   onSelectRef.current = onSelectPoi
   onVisitRef.current = onSelectVisit
@@ -194,6 +202,8 @@ export default function MapView({
   onPersonRef.current = onSelectPerson
   resultsRef.current = results
   ambientRef.current = ambientPois
+  liveFixRef.current = liveFix
+  userFixRef.current = userFix
 
   /** Run `fn` once the style is ready, whether or not it already is. */
   const whenReady = (map: MapLibreMap, fn: () => void) => {
@@ -952,13 +962,15 @@ export default function MapView({
     })
   }, [followMe, liveFix])
 
+  // Only the signal moves the camera. Recentring is something you asked for,
+  // so a new fix arriving is not a reason to pull the view back.
   useEffect(() => {
     const map = mapRef.current
     if (!map || !recenterSignal) return
-    const target = liveFix ?? userFix
+    const target = liveFixRef.current ?? userFixRef.current
     if (!target) return
     map.easeTo({ center: [target.lon, target.lat], zoom: 16, duration: 600 })
-  }, [recenterSignal, liveFix, userFix])
+  }, [recenterSignal])
 
   // --- focus a specific place ----------------------------------------------
   useEffect(() => {

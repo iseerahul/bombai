@@ -116,6 +116,28 @@ const CITYWIDE_RADIUS_M = 12000
 const REFRESH_MS = 30_000
 const PRESENCE_MS = 60_000
 
+/*
+ * Same places, same community verdicts.
+ *
+ * mergeStatus rebuilds the list every time it runs, and the weights inside a
+ * status decay continuously — so value equality would always say "changed".
+ * Only what is actually shown, the verdict and when it was last reported,
+ * counts as a change.
+ */
+function sameStatuses(a: Poi[], b: Poi[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((poi, i) => {
+      const other = b[i]
+      return (
+        poi.id === other.id &&
+        poi.status?.verdict === other.status?.verdict &&
+        poi.status?.lastReportAt === other.status?.lastReportAt
+      )
+    })
+  )
+}
+
 export default function App() {
   const [mode, setMode] = useState<Mode>('ask')
 
@@ -241,6 +263,16 @@ export default function App() {
 
   const refreshAmbient = useCallback(() => setAmbient(allLoadedPois()), [])
 
+  /*
+   * The open place card belongs to the mode it was opened in. It sits ahead of
+   * every mode's panel in the bottom-panel chain, so leaving it up across a
+   * switch means the mode you switched to never gets to mount.
+   */
+  const changeMode = useCallback((next: Mode) => {
+    setMode(next)
+    setSelected(null)
+  }, [])
+
   // ==========================================================================
   // Startup
   // ==========================================================================
@@ -305,8 +337,17 @@ export default function App() {
     return () => window.clearInterval(timer)
   }, [refreshReports])
 
+  /*
+   * Reports refresh every five minutes. A fresh array identity each time makes
+   * the map re-fit its camera under someone who has panned away, so the old
+   * array is kept unless a verdict actually moved.
+   */
   useEffect(() => {
-    setResults((prev) => (prev.length ? mergeStatus(prev, reports) : prev))
+    setResults((prev) => {
+      if (!prev.length) return prev
+      const next = mergeStatus(prev, reports)
+      return sameStatuses(prev, next) ? prev : next
+    })
   }, [reports])
 
   useEffect(() => {
@@ -369,6 +410,14 @@ export default function App() {
       setActivitiesLoading(false)
     }
   }, [activityFilter, me])
+
+  /*
+   * Presence reaches the refresher through this ref: refreshActivities is
+   * rebuilt whenever the category filter changes, and a filter tap must not
+   * tear your location sharing down and immediately re-share it.
+   */
+  const refreshActivitiesRef = useRef(refreshActivities)
+  refreshActivitiesRef.current = refreshActivities
 
   const refreshEventList = useCallback(async () => {
     setEventsLoading(true)
@@ -449,7 +498,7 @@ export default function App() {
       }
     }
     void push().then(() => {
-      if (alive) void refreshActivities()
+      if (alive) void refreshActivitiesRef.current()
     })
     const timer = window.setInterval(push, PRESENCE_MS)
     return () => {
@@ -457,7 +506,7 @@ export default function App() {
       window.clearInterval(timer)
       void stopSharingLocation().catch(() => {})
     }
-  }, [me, mode, refreshActivities])
+  }, [me, mode])
 
   // ==========================================================================
   // Navigation
@@ -618,7 +667,7 @@ export default function App() {
   const askQuestion = useCallback(
     async (question: string) => {
       setBusy(true)
-      setMode('ask')
+      changeMode('ask')
       setAskNotice(null)
 
       try {
@@ -735,7 +784,7 @@ export default function App() {
         setBusy(false)
       }
     },
-    [userFix, drawRoute, refreshAmbient]
+    [userFix, drawRoute, refreshAmbient, changeMode]
   )
 
   /**
@@ -830,8 +879,12 @@ export default function App() {
 
     setVisitsLoading(true)
     void (async () => {
+      /*
+       * Anything saved before sign-in existed is lifted to this account once —
+       * on its own, because IndexedDB may not be there at all (private window,
+       * blocked storage) and a board that lives on the server must still load.
+       */
       try {
-        // Anything saved before sign-in existed is lifted to this account once.
         const moved = await migrateLocalVisits((draft, photos) =>
           createVisitOnServer(draft, photos as never)
         )
@@ -839,6 +892,11 @@ export default function App() {
           setBanner(`Moved ${moved} saved ${moved === 1 ? 'place' : 'places'} to your account`)
           window.setTimeout(() => setBanner(null), 3000)
         }
+      } catch {
+        /* nothing local to lift, or nowhere to lift it from */
+      }
+
+      try {
         const { visits: rows } = await listVisitsFromServer()
         if (alive) setVisits(rows)
       } catch {
@@ -872,16 +930,20 @@ export default function App() {
       const { visits: rows } = await listVisitsFromServer()
       setVisits(rows)
       setVisitTarget(null)
-      if (photoFailures > 0) {
-        setBanner(
-          `${photoFailures} photo${photoFailures === 1 ? '' : 's'} did not upload — the place is saved`
-        )
-        window.setTimeout(() => setBanner(null), 4000)
-      }
-      // Self-clearing: the old call left "Added … to My Map" pinned over
-      // the map until something else happened to replace it.
-      setBanner(`Added ${draft.label} to My Map`)
-      window.setTimeout(() => setBanner(null), 2500)
+      /*
+       * One banner, because two set in the same tick means only the second is
+       * ever seen — and the one being lost was the bad news. Self-clearing: the
+       * old call left "Added … to My Map" pinned over the map until something
+       * else happened to replace it.
+       */
+      setBanner(
+        photoFailures > 0
+          ? `Added ${draft.label} to My Map — ${photoFailures} photo${
+              photoFailures === 1 ? '' : 's'
+            } did not upload`
+          : `Added ${draft.label} to My Map`
+      )
+      window.setTimeout(() => setBanner(null), photoFailures > 0 ? 4000 : 2500)
     } catch {
       setVisitSaveError('Could not save that. Your photos are still here — try again.')
     } finally {
@@ -1014,11 +1076,11 @@ export default function App() {
         ambient={ambientFx}
         onSelectPoi={setSelected}
         onSelectActivity={(id) => {
-          setMode('hangout')
+          changeMode('hangout')
           setOpenActivity(id)
         }}
         onSelectEvent={(id) => {
-          setMode('events')
+          changeMode('events')
           setOpenEvent(id)
         }}
         onSelectPerson={showPerson}
@@ -1045,7 +1107,7 @@ export default function App() {
       {/* --- mode switcher --- */}
       {!nav && (
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 p-3">
-          <ModeTabs tabs={MODES} value={mode} onChange={setMode} />
+          <ModeTabs tabs={MODES} value={mode} onChange={changeMode} />
         </div>
       )}
 
@@ -1055,6 +1117,28 @@ export default function App() {
           state={locating ? 'locating' : userFix ? 'located' : 'idle'}
           onLocate={locateMe}
         />
+      )}
+
+      {/*
+       * The honesty page had nothing that opened it. It sits with the map's own
+       * controls rather than inside one mode's panel, because what leaves the
+       * device is true of all three modes and should be readable from any of
+       * them.
+       */}
+      {!nav && (
+        <div className="absolute right-2.5 top-[14.5rem] z-10 sm:right-3.5">
+          <button
+            type="button"
+            onClick={() => setPrivacyOpen(true)}
+            aria-label="What leaves your device"
+            title="What leaves your device"
+            className="flex h-[29px] w-[29px] items-center justify-center rounded-full border
+                       border-white/40 bg-surface/80 text-muted shadow-mid backdrop-blur-xl
+                       transition-colors hover:text-ink dark:border-white/10"
+          >
+            <Icon name="shield" size={15} />
+          </button>
+        </div>
       )}
 
       {/* Hidden while navigating: nobody wants birds over their directions. */}
@@ -1232,6 +1316,11 @@ export default function App() {
           }}
           onOpenRoom={openRoom}
           onOpenProfile={showPerson}
+          // The same pair EventSheet gets. Without them a signed-out tap on
+          // "I'm in" dead-ends on the server's "Sign in to do that." with no
+          // way to actually sign in.
+          signedIn={Boolean(me)}
+          onNeedAccount={(purpose, then) => setAccountPrompt({ purpose, then })}
         />
       )}
 

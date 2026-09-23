@@ -48,6 +48,20 @@ function timeOf(ts: number): string {
   return new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
+/**
+ * Append only what we don't already have.
+ *
+ * `since` is a timestamp, so anything that arrives in the same millisecond as
+ * the last row we saw comes back twice; ids are the only thing that actually
+ * identifies a message. Returning `prev` unchanged when there is nothing new
+ * keeps the scroll-to-bottom effect from firing on every poll.
+ */
+function mergeById(prev: RoomMessage[], incoming: RoomMessage[]): RoomMessage[] {
+  const seen = new Set(prev.map((m) => m.id))
+  const fresh = incoming.filter((m) => !seen.has(m.id))
+  return fresh.length ? [...prev, ...fresh] : prev
+}
+
 export default function ChatRoom({ roomId, onBack, onOpenProfile }: ChatRoomProps) {
   const [room, setRoom] = useState<RoomDetail | null>(null)
   const [messages, setMessages] = useState<RoomMessage[]>([])
@@ -57,6 +71,15 @@ export default function ChatRoom({ roomId, onBack, onOpenProfile }: ChatRoomProp
   const [busy, setBusy] = useState(false)
 
   const lastSeen = useRef(0)
+  /*
+   * `lastSeen` only moves once a fetch resolves, so two overlapping fetches ask
+   * for the same `since` and come back with the same rows. This holds the one
+   * fetch that is allowed to be running; anyone else joins it instead of
+   * starting a second. Merging by id covers what it can't.
+   */
+  const inFlight = useRef<Promise<void> | null>(null)
+  const roomRef = useRef(roomId)
+  roomRef.current = roomId
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async () => {
@@ -74,28 +97,34 @@ export default function ChatRoom({ roomId, onBack, onOpenProfile }: ChatRoomProp
 
   const joined = room?.joined ?? false
 
-  useEffect(() => {
-    if (!joined) return
-    let cancelled = false
-
-    const tick = async () => {
+  const pump = useCallback(async (): Promise<void> => {
+    if (inFlight.current) return inFlight.current
+    const run = (async () => {
       try {
         const { messages: incoming } = await fetchRoomMessages(roomId, lastSeen.current)
-        if (cancelled || !incoming.length) return
-        lastSeen.current = incoming[incoming.length - 1].createdAt
-        setMessages((prev) => [...prev, ...incoming])
+        // A response for a room we've since left doesn't belong in this list.
+        if (roomRef.current !== roomId || !incoming.length) return
+        lastSeen.current = Math.max(
+          lastSeen.current,
+          incoming[incoming.length - 1].createdAt
+        )
+        setMessages((prev) => mergeById(prev, incoming))
       } catch {
         // A dropped poll isn't worth a banner; the next tick catches up.
       }
-    }
+    })()
+    inFlight.current = run.finally(() => {
+      inFlight.current = null
+    })
+    return inFlight.current
+  }, [roomId])
 
-    void tick()
-    const timer = window.setInterval(tick, POLL_MS)
-    return () => {
-      cancelled = true
-      window.clearInterval(timer)
-    }
-  }, [joined, roomId])
+  useEffect(() => {
+    if (!joined) return
+    void pump()
+    const timer = window.setInterval(() => void pump(), POLL_MS)
+    return () => window.clearInterval(timer)
+  }, [joined, pump])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -108,11 +137,11 @@ export default function ChatRoom({ roomId, onBack, onOpenProfile }: ChatRoomProp
     setDraft('')
     try {
       await sendRoomMessage(roomId, body)
-      const { messages: incoming } = await fetchRoomMessages(roomId, lastSeen.current)
-      if (incoming.length) {
-        lastSeen.current = incoming[incoming.length - 1].createdAt
-        setMessages((prev) => [...prev, ...incoming])
-      }
+      // A poll that was already running asked the server before this message
+      // existed, so let it finish and then fetch again — otherwise your own
+      // message doesn't show until the next tick.
+      if (inFlight.current) await inFlight.current
+      await pump()
     } catch (err) {
       setError(err instanceof HangoutError ? err.message : 'Message not sent.')
       setDraft(body)

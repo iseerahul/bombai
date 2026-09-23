@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Poi } from '../types'
 import Icon, { CategoryBadge } from '../ui/Icon'
 import { CATEGORIES, categoryColor, categoryLabel } from '../config/categories'
@@ -81,11 +81,22 @@ export default function CreateFlow({ selfLocation, onClose, onCreated }: CreateF
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  /*
+   * The debounce cancels the timer, not a search already running, and the first
+   * search pays for loading every category file while a later one is served
+   * from cache. So a slow first response could land after a fast second one and
+   * replace the right list with the wrong one. Every search takes a number, and
+   * only the newest one is allowed to touch state.
+   */
+  const searchSeq = useRef(0)
+
   const runVenueSearch = useCallback(
     async (query: string) => {
       const text = query.trim()
+      const seq = ++searchSeq.current
       if (text.length < 2) {
         setVenueResults([])
+        setSearching(false)
         return
       }
       setSearching(true)
@@ -101,11 +112,13 @@ export default function CreateFlow({ selfLocation, onClose, onCreated }: CreateF
           text: locality ? text.replace(new RegExp(locality.name, 'i'), '').trim() : text,
           limit: 20,
         })
+        if (seq !== searchSeq.current) return
         setVenueResults(results.filter((p) => p.name).slice(0, 12))
       } catch {
-        setVenueResults([])
+        if (seq === searchSeq.current) setVenueResults([])
       } finally {
-        setSearching(false)
+        // A stale search must not clear the spinner a newer one put up.
+        if (seq === searchSeq.current) setSearching(false)
       }
     },
     [selfLocation]

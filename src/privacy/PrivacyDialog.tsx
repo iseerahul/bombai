@@ -179,7 +179,8 @@ export default function PrivacyDialog({ onClose }: PrivacyDialogProps) {
               </li>
               <li>
                 No location history. Sharing your position keeps one row that is
-                overwritten each update and deleted when you switch it off.
+                overwritten each update and deleted when you leave the Hangout
+                tab or sign out.
               </li>
               <li>No ads, sponsored pins, or paid placement, ever.</li>
               <li>
@@ -207,10 +208,12 @@ export default function PrivacyDialog({ onClose }: PrivacyDialogProps) {
             </p>
             <p className="mt-2 text-sm leading-relaxed text-muted">
               With an account, the server knows a name and (via Google) a
-              profile picture, plus what you join and post. Appearing on the map
-              is a separate switch that is off until you turn it on, keeps one
-              overwritten row rather than a trail, and deletes itself when you
-              switch it off.
+              profile picture, plus what you join and post. While you are signed
+              in and looking at the Hangout tab, your position is shared with
+              other people there — that is what makes the tab work, so there is
+              no separate switch for it. It stops the moment you leave the tab
+              or sign out, and it keeps one row that is overwritten each update
+              rather than a trail, which is deleted when the sharing stops.
             </p>
           </section>
 

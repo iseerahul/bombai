@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Icon from '../ui/Icon'
 import {
   type DmMessage,
@@ -19,6 +19,20 @@ import {
 
 const POLL_MS = 4000
 
+/**
+ * Append only what we don't already have.
+ *
+ * `since` is a timestamp, so anything written in the same millisecond as the
+ * last row we saw comes back twice; ids are the only thing that actually
+ * identifies a message. Returning `prev` unchanged when there is nothing new
+ * keeps the scroll-to-bottom effect from firing on every poll.
+ */
+function mergeById(prev: DmMessage[], incoming: DmMessage[]): DmMessage[] {
+  const seen = new Set(prev.map((m) => m.id))
+  const fresh = incoming.filter((m) => !seen.has(m.id))
+  return fresh.length ? [...prev, ...fresh] : prev
+}
+
 interface DmConversationProps {
   thread: DmThread
   onBack: () => void
@@ -36,29 +50,47 @@ export default function DmConversation({
   const [menuOpen, setMenuOpen] = useState(false)
 
   const lastSeen = useRef(0)
+  /*
+   * `lastSeen` only moves once a fetch resolves, so two overlapping fetches ask
+   * for the same `since` and come back with the same rows. This holds the one
+   * fetch that is allowed to be running; anyone else joins it instead of
+   * starting a second. Merging by id covers what it can't.
+   */
+  const inFlight = useRef<Promise<void> | null>(null)
+  const threadRef = useRef(thread.id)
+  threadRef.current = thread.id
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    const tick = async () => {
+  const pump = useCallback(async (): Promise<void> => {
+    if (inFlight.current) return inFlight.current
+    const id = thread.id
+    const run = (async () => {
       try {
-        const { messages: incoming } = await fetchDm(thread.id, lastSeen.current)
-        if (cancelled || !incoming.length) return
-        lastSeen.current = incoming[incoming.length - 1].createdAt
-        setMessages((prev) => [...prev, ...incoming])
+        const { messages: incoming } = await fetchDm(id, lastSeen.current)
+        // A response for a conversation we've since left isn't this list.
+        if (threadRef.current !== id || !incoming.length) return
+        lastSeen.current = Math.max(
+          lastSeen.current,
+          incoming[incoming.length - 1].createdAt
+        )
+        setMessages((prev) => mergeById(prev, incoming))
       } catch (err) {
         if (err instanceof HangoutError && err.code === 'blocked') {
           setError("You can't message this person.")
         }
       }
-    }
-    void tick()
-    const timer = window.setInterval(tick, POLL_MS)
-    return () => {
-      cancelled = true
-      window.clearInterval(timer)
-    }
+    })()
+    inFlight.current = run.finally(() => {
+      inFlight.current = null
+    })
+    return inFlight.current
   }, [thread.id])
+
+  useEffect(() => {
+    void pump()
+    const timer = window.setInterval(() => void pump(), POLL_MS)
+    return () => window.clearInterval(timer)
+  }, [pump])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -71,11 +103,11 @@ export default function DmConversation({
     setDraft('')
     try {
       await sendDm(thread.id, body)
-      const { messages: incoming } = await fetchDm(thread.id, lastSeen.current)
-      if (incoming.length) {
-        lastSeen.current = incoming[incoming.length - 1].createdAt
-        setMessages((prev) => [...prev, ...incoming])
-      }
+      // A poll that was already running asked the server before this message
+      // existed, so let it finish and then fetch again — otherwise your own
+      // message doesn't show until the next tick.
+      if (inFlight.current) await inFlight.current
+      await pump()
     } catch (err) {
       setError(err instanceof HangoutError ? err.message : 'Message not sent.')
       setDraft(body)

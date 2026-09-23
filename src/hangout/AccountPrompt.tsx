@@ -144,8 +144,8 @@ export default function AccountPrompt({
           <Icon name="shield" size={13} className="mt-px shrink-0" />
           <span>
             No password to remember. We keep a name and, with Google, your
-            profile picture — nothing else. You can delete the account from
-            Profile at any time.
+            profile picture — nothing else. You can sign out from Profile, and
+            change your name or picture there at any time.
           </span>
         </p>
 

@@ -60,12 +60,20 @@ export default function VisitSheet({
   const [photoErrors, setPhotoErrors] = useState<string[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // Object URLs are a real leak if the sheet is opened and closed repeatedly.
+  /*
+   * Object URLs are a real leak if the sheet is opened and closed repeatedly,
+   * so they are revoked on the way out — but only then. Keeping `photos` in the
+   * dependency list ran the cleanup on every change, which revoked the URL of a
+   * photo still on screen the moment a second one was added. `removePhoto`
+   * revokes the one it drops, so a ref read at unmount is the whole job.
+   */
+  const photosRef = useRef(photos)
+  photosRef.current = photos
   useEffect(() => {
     return () => {
-      for (const p of photos) URL.revokeObjectURL(p.previewUrl)
+      for (const p of photosRef.current) URL.revokeObjectURL(p.previewUrl)
     }
-  }, [photos])
+  }, [])
 
   async function addFiles(list: FileList | null) {
     if (!list?.length) return

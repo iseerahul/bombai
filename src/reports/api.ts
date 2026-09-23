@@ -121,12 +121,11 @@ export function statusForPoi(
 
 /** Attach community status to a list of POIs. */
 export function mergeStatus(pois: Poi[], reports: CommunityReport[]): Poi[] {
-  if (!reports.length) return pois
   const now = Date.now()
-  return pois.map((poi) => {
-    const status = statusForPoi(poi, reports, now)
-    return status ? { ...poi, status } : poi
-  })
+  // Written unconditionally, including when there is no status: reports expire,
+  // and keeping the previous value would leave a tap marked broken long after
+  // the report that said so was gone.
+  return pois.map((poi) => ({ ...poi, status: statusForPoi(poi, reports, now) }))
 }
 
 /** Live flooding reports only — these drive the monsoon layer. */

@@ -26,6 +26,15 @@ import {
 
 interface ActivitySheetProps {
   activityId: string
+  /**
+   * Signed-in state and the account prompt, exactly as EventSheet takes them:
+   * without these, tapping "I'm in" signed out ended at "Sign in to do that."
+   * with no way to sign in. Both are optional so the sheet still works if they
+   * aren't passed — it then assumes you're signed in and lets the server's
+   * error speak, which is the old behaviour.
+   */
+  signedIn?: boolean
+  onNeedAccount?: (purpose: string, then: () => void) => void
   onClose: () => void
   onChanged: () => void
   onOpenRoom: (roomId: string) => void
@@ -38,6 +47,8 @@ function timeOf(ts: number): string {
 
 export default function ActivitySheet({
   activityId,
+  signedIn = true,
+  onNeedAccount,
   onClose,
   onChanged,
   onOpenRoom,
@@ -66,7 +77,18 @@ export default function ActivitySheet({
   const isIn = detail?.myStatus === 'approved' || detail?.isMine === true
   const full = detail ? detail.approvedCount >= detail.capacity : false
 
-  async function join() {
+  function join() {
+    // Offer the account first, then carry on into the join you asked for. The
+    // resumed call goes straight to the join rather than back through here: by
+    // then this closure still holds the old signedIn and would ask again.
+    if (!signedIn && onNeedAccount) {
+      onNeedAccount('join this', () => void doJoin())
+      return
+    }
+    void doJoin()
+  }
+
+  async function doJoin() {
     setBusy(true)
     setError(null)
     try {
