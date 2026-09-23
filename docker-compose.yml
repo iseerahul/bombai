@@ -11,12 +11,20 @@ services:
     build: .
     image: bambai:local
     ports:
+      # host:container. Everything is on 8787 inside — the landing at /, the
+      # map at /app/, the API at /api/*. To serve it on another host port,
+      # change only the left number (e.g. "3000:8787") and open THAT port in
+      # your firewall or cloud security group.
       - "8787:8787"
     environment:
       # Where the browser thinks it is. Google's OAuth redirect is built from
       # this, so it must match the URL you actually open AND the Authorised
       # redirect URI registered in Google Cloud, or sign-in fails with
       # redirect_uri_mismatch. Behind a reverse proxy, set your public https URL.
+      # On a public host this MUST be the URL people actually type. Left at a
+      # localhost value on an internet-facing box it switches on the dev
+      # sign-in shortcut — anyone could become any user — so the server now
+      # refuses to start in that combination rather than serving it.
       APP_ORIGIN: ${APP_ORIGIN:-http://localhost:8787}
 
       # Salts the rate-limit hash. Any long random string; changing it just

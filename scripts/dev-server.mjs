@@ -445,6 +445,55 @@ const server = createServer(async (req, res) => {
 const HOST = process.env.HOST ?? '127.0.0.1'
 const LOOPBACK = HOST === '127.0.0.1' || HOST === '::1' || HOST === 'localhost'
 
+/*
+ * Refuse to serve an auth bypass to the internet.
+ *
+ * worker/auth.ts enables a dev sign-in shortcut when there are no Google
+ * credentials AND APP_ORIGIN is a plain-http localhost URL — on your own
+ * machine that is a convenience, and its own comment is blunt about what it
+ * is: "anyone who can reach it can become anyone."
+ *
+ * Bind to a public interface while that combination holds and the shortcut is
+ * reachable from the network. The default APP_ORIGIN in docker-compose.yml is
+ * a localhost URL, so this is the state you land in by cloning and running.
+ *
+ * It is also broken anyway: OAuth redirects and cookie Secure flags are both
+ * derived from APP_ORIGIN, so a public deployment claiming to be localhost
+ * cannot sign anyone in regardless. Failing here with the fix in hand beats
+ * starting and quietly handing out accounts.
+ */
+if (!LOOPBACK) {
+  const id = (env.GOOGLE_CLIENT_ID ?? '').trim()
+  const hasGoogle = /\.apps\.googleusercontent\.com$/.test(id)
+  const origin = (env.APP_ORIGIN ?? '').trim()
+  const originIsLocal = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+
+  if (!hasGoogle && originIsLocal) {
+    console.error(
+      [
+        '',
+        '  REFUSING TO START',
+        '',
+        `  Bound to ${HOST} (reachable from the network), but APP_ORIGIN is`,
+        `  ${origin || '(unset)'} and no Google credentials are set.`,
+        '',
+        '  That combination switches on the dev sign-in shortcut, which lets',
+        '  anyone who can reach this server become any user.',
+        '',
+        '  Set APP_ORIGIN to the URL people actually use, for example:',
+        `    APP_ORIGIN=http://<your-public-host>:${PORT}`,
+        '',
+        '  and add GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET for real sign-in.',
+        '  To override deliberately on a trusted private network:',
+        '    ALLOW_DEV_LOGIN=1',
+        '',
+      ].join(String.fromCharCode(10))
+    )
+    if (process.env.ALLOW_DEV_LOGIN !== '1') process.exit(1)
+    console.error('  ALLOW_DEV_LOGIN=1 set - continuing with the bypass OPEN.')
+  }
+}
+
 server.listen(PORT, HOST, () => {
   console.log(`\n  Worker (Node shim)  http://127.0.0.1:${PORT}`)
   console.log(`  D1                  ${dbPath.replace(ROOT, '.')}`)
