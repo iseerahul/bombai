@@ -411,8 +411,18 @@ export default {
           return row?.n ?? 0
         }
 
-        const [members, activities, events, spots] = await Promise.all([
+        const [members, live, activities, events, spots] = await Promise.all([
           one('SELECT COUNT(*) AS n FROM users'),
+          /*
+           * People on the map this minute. Same predicate listPeople uses, so
+           * the number matches what someone actually sees: not expired, and
+           * sharing switched on. Presence rows are deleted outright when
+           * sharing stops, so this cannot count anyone who has left.
+           */
+          one(
+            'SELECT COUNT(*) AS n FROM presence WHERE expires_at > ? AND visible = 1',
+            now
+          ),
           one('SELECT COUNT(*) AS n FROM activities WHERE expires_at > ?', now),
           one('SELECT COUNT(*) AS n FROM events WHERE expires_at > ?', now),
           one("SELECT COUNT(*) AS n FROM spots WHERE status = 'visible'"),
@@ -426,6 +436,8 @@ export default {
             events,
             // People with an account. Not "visitors" — we do not track those.
             members,
+            // Of those, the ones on the map right now.
+            live,
             // Places added by people, on top of the baked OpenStreetMap set.
             spots,
           },
