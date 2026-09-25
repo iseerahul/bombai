@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { MapPin, Users, CalendarDays, ArrowUpRight, Bookmark, Clock } from "lucide-react";
 
@@ -31,7 +32,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Find the event. Meet the crew. Make the city yours. 42 plans live across Mumbai right now.",
+          "Find the event. Meet the crew. Make the city yours — hangouts, gigs and crews across Mumbai.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -76,7 +77,7 @@ const cards = [
     title: "Events",
     kicker: "आज क्या है",
     body: "Gigs, open mics, run clubs, pool parties. Tonight, this week, or a date you pick.",
-    stat: "274 this week",
+    stat: null,
     img: eventsShot,
     bg: "var(--sun)",
     tilt: "-1deg",
@@ -106,11 +107,89 @@ const tags = [
  */
 const MAP_URL = import.meta.env.VITE_MAP_URL ?? "/app/";
 
+/**
+ * Where the live counts come from.
+ *
+ * Same story as MAP_URL: in production the landing and the API share one
+ * Cloudflare origin, so a relative path is right and "" is the default. In
+ * development the API is a separate worker on :8787, so VITE_API_URL in
+ * .env.development points there.
+ */
+const API_URL = import.meta.env.VITE_API_URL ?? "";
+
+type Stats = {
+  plans: number;
+  activities: number;
+  events: number;
+  members: number;
+  live: number;
+  spots: number;
+};
+
+/**
+ * Live counts, fetched in the browser — this page is prerendered, so there is
+ * no server render to fetch on. Until it lands, and if it never does, the
+ * value stays null and every figure renders as an em dash. Nothing here
+ * invents a number or falls back to one.
+ */
+function useStats(): Stats | null {
+  const [stats, setStats] = useState<Stats | null>(null);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch(`${API_URL}/api/stats`, { signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => {
+        if (d && typeof d.plans === "number") setStats(d as Stats);
+      })
+      .catch(() => {
+        /* leave the em dashes standing */
+      });
+    return () => ctrl.abort();
+  }, []);
+
+  return stats;
+}
+
+const DASH = "\u2014";
+
+/**
+ * Readable, never flattering. Exact and comma-grouped up to 9,999 — small
+ * numbers are shown exactly as they are. Only past five digits, where the
+ * digits stop being readable anyway, does it abbreviate.
+ */
+function num(v: number | null | undefined): string {
+  if (typeof v !== "number" || !Number.isFinite(v)) return DASH;
+  if (v < 10000) return v.toLocaleString("en-IN");
+  return `${(v / 1000).toFixed(v < 100000 ? 1 : 0)}K`;
+}
+
+/** "209 plans live", "1 plan live", or "— plans live" while loading. */
+function count(v: number | null | undefined, one: string, many: string): string {
+  if (typeof v !== "number" || !Number.isFinite(v)) return `${DASH} ${many}`;
+  return `${num(v)} ${v === 1 ? one : many}`;
+}
+
+/**
+ * How many people are on the map right now.
+ *
+ * On a small deployment this is genuinely 0 most of the time. "0 on the map
+ * now" is true but reads like the lights are off, so at zero the line turns
+ * into an invitation instead — still true, still not a number we made up.
+ * Before the fetch lands it is an em dash, never the zero phrasing: we do not
+ * yet know that nobody is out.
+ */
+function liveLine(stats: Stats | null, capital = false): string {
+  if (!stats) return `${DASH} on the map now`;
+  if (stats.live >= 1) return `${num(stats.live)} on the map now`;
+  return capital ? "Be the first one out" : "be the first one out";
+}
+
 function ExploreButton({ className = "" }: { className?: string }) {
   return (
     <a
       href={MAP_URL}
-      className={`press inline-flex items-center gap-3 rounded-full border-[3px] border-border bg-primary px-8 py-4 font-display text-2xl tracking-wide text-primary-foreground uppercase shadow-[6px_6px_0_0_var(--ink)] ${className}`}
+      className={`press inline-flex min-h-[44px] max-w-full items-center justify-center gap-3 rounded-full border-[3px] border-border bg-primary px-6 py-3 font-display text-xl tracking-wide text-primary-foreground uppercase shadow-[6px_6px_0_0_var(--ink)] sm:px-8 sm:py-4 sm:text-2xl ${className}`}
     >
       Explore Bambai
       <ArrowUpRight className="h-5 w-5 shrink-0" strokeWidth={3} />
@@ -119,12 +198,14 @@ function ExploreButton({ className = "" }: { className?: string }) {
 }
 
 function Landing() {
+  const stats = useStats();
+
   return (
     <main className="overflow-x-hidden bg-background text-foreground">
       {/* NAV */}
       <header className="sticky top-0 z-50 px-3 pt-3 sm:px-6 sm:pt-5">
-        <nav className="ink-frame flex flex-nowrap items-center justify-between gap-3 rounded-sm bg-background/95 px-4 py-3 backdrop-blur sm:px-6">
-          <a href="#top" className="min-w-0 truncate font-display text-2xl tracking-wide">
+        <nav className="ink-frame flex flex-nowrap items-center justify-between gap-2 rounded-sm bg-background/95 px-3 py-2 backdrop-blur sm:gap-3 sm:px-6 sm:py-3">
+          <a href="#top" className="flex min-h-[44px] min-w-0 items-center truncate font-display text-xl tracking-wide sm:text-2xl">
             Bambai <span className="text-primary">Side Up</span>
           </a>
           <div className="hidden items-center gap-8 justify-self-center font-mono text-xs tracking-[0.18em] uppercase lg:flex">
@@ -138,11 +219,11 @@ function Landing() {
               City line
             </a>
           </div>
-          <div className="flex shrink-0 items-center gap-4">
+          <div className="flex shrink-0 items-center gap-3 sm:gap-4">
             <span className="hidden items-center gap-1.5 text-sm text-muted-foreground sm:flex">
               <Bookmark className="h-4 w-4" /> 0 saved
             </span>
-            <ExploreButton className="!px-5 !py-2 !text-lg" />
+            <ExploreButton className="!px-4 !py-2 !text-base sm:!px-5 sm:!text-lg" />
           </div>
         </nav>
       </header>
@@ -159,43 +240,43 @@ function Landing() {
         <img
           src={stickerChai}
           alt="Cutting chai sticker"
-          className="pointer-events-none absolute left-[2%] top-[13%] z-10 w-24 -rotate-12 sm:left-[3%] sm:w-36 lg:left-[4%] lg:top-[14%] lg:w-44"
+          className="pointer-events-none absolute left-[2%] top-[9%] z-10 w-16 -rotate-12 sm:left-[3%] sm:top-[13%] sm:w-36 lg:left-[4%] lg:top-[14%] lg:w-44"
         />
         <img
           src={stickerVadaPav}
           alt="Vada pav sticker"
-          className="pointer-events-none absolute right-[1%] top-[6%] z-10 w-28 rotate-8 sm:right-[2%] sm:w-40 lg:right-[3%] lg:top-[7%] lg:w-52"
+          className="pointer-events-none absolute right-[1%] top-[5%] z-10 w-16 rotate-8 sm:right-[2%] sm:top-[6%] sm:w-40 lg:right-[3%] lg:top-[7%] lg:w-52"
         />
         <img
           src={stickerRickshaw}
           alt="Auto-rickshaw sticker"
-          className="pointer-events-none absolute bottom-[1%] left-[0%] z-10 w-44 -rotate-6 sm:left-[2%] sm:w-64 lg:left-[3%] lg:w-72"
+          className="pointer-events-none absolute bottom-[1%] left-[0%] z-10 w-24 -rotate-6 sm:left-[2%] sm:w-64 lg:left-[3%] lg:w-72"
         />
         <img
           src={stickerCouple}
           alt="Two friends laughing sticker"
-          className="pointer-events-none absolute right-[0%] bottom-[1%] z-10 w-44 rotate-6 sm:right-[2%] sm:w-64 lg:right-[3%] lg:w-72"
+          className="pointer-events-none absolute right-[0%] bottom-[1%] z-10 w-24 rotate-6 sm:right-[2%] sm:w-64 lg:right-[3%] lg:w-72"
         />
 
         {/* Mumbai moments floating as square cards */}
-        <div className="drift ink-frame absolute left-[4%] top-[38%] z-20 w-20 -rotate-3 overflow-hidden bg-background p-1 sm:left-[14%] sm:top-[40%] sm:w-28 lg:left-[17%] lg:top-[41%] lg:w-36">
+        <div className="drift ink-frame absolute left-[4%] top-[38%] z-20 hidden w-20 -rotate-3 overflow-hidden bg-background p-1 sm:block sm:left-[14%] sm:top-[40%] sm:w-28 lg:left-[17%] lg:top-[41%] lg:w-36">
           <img src={nightDrive} alt="Friends out in Mumbai at night" className="aspect-square w-full object-cover" />
         </div>
-        <div className="drift ink-frame absolute right-[4%] top-[36%] z-20 w-20 rotate-3 overflow-hidden bg-background p-1 sm:right-[14%] sm:top-[38%] sm:w-28 lg:right-[17%] lg:top-[39%] lg:w-36" style={{ animationDelay: "1.2s" }}>
+        <div className="drift ink-frame absolute right-[4%] top-[36%] z-20 hidden w-20 rotate-3 overflow-hidden bg-background p-1 sm:block sm:right-[14%] sm:top-[38%] sm:w-28 lg:right-[17%] lg:top-[39%] lg:w-36" style={{ animationDelay: "1.2s" }}>
           <img src={friendsToast} alt="Friends raising a toast" className="aspect-square w-full object-cover" />
         </div>
-        <div className="drift ink-frame absolute bottom-[26%] left-[6%] z-20 w-20 rotate-2 overflow-hidden bg-background p-1 sm:bottom-[27%] sm:left-[15%] sm:w-28 lg:bottom-[25%] lg:left-[19%] lg:w-36" style={{ animationDelay: "2.4s" }}>
+        <div className="drift ink-frame absolute bottom-[26%] left-[6%] z-20 hidden w-20 rotate-2 overflow-hidden bg-background p-1 sm:block sm:bottom-[27%] sm:left-[15%] sm:w-28 lg:bottom-[25%] lg:left-[19%] lg:w-36" style={{ animationDelay: "2.4s" }}>
           <img src={dancefloor} alt="A Mumbai dance floor" className="aspect-square w-full object-cover" />
         </div>
-        <div className="drift ink-frame absolute right-[6%] bottom-[26%] z-20 w-20 -rotate-2 overflow-hidden bg-background p-1 sm:right-[15%] sm:bottom-[27%] sm:w-28 lg:right-[19%] lg:bottom-[26%] lg:w-36" style={{ animationDelay: "0.6s" }}>
+        <div className="drift ink-frame absolute right-[6%] bottom-[26%] z-20 hidden w-20 -rotate-2 overflow-hidden bg-background p-1 sm:block sm:right-[15%] sm:bottom-[27%] sm:w-28 lg:right-[19%] lg:bottom-[26%] lg:w-36" style={{ animationDelay: "0.6s" }}>
           <img src={marineSnacks} alt="Late-night snacks by Marine Drive" className="aspect-square w-full object-cover" />
         </div>
 
-        <div className="relative z-30 flex min-h-screen flex-col items-center justify-center px-4 pt-28 pb-20 text-center">
+        <div className="relative z-30 flex min-h-screen flex-col items-center justify-center px-4 pt-28 pb-44 text-center sm:pb-20">
           <span className="ink-frame bg-foreground px-4 py-2 font-sans text-[11px] font-extrabold tracking-wide text-background uppercase sm:text-xs">
-            Mumbai is outside · 2.4K live people
+            Mumbai is outside · {count(stats?.members, "person", "people")}
           </span>
-          <h1 className="poster-caps mt-5 text-[18vw] sm:text-[14vw] lg:text-[10.5rem]">
+          <h1 className="poster-caps mt-5 text-[15vw] sm:text-[14vw] lg:text-[10.5rem]">
             <span className="block">Bambai</span>
             <span
               className="block text-transparent"
@@ -207,7 +288,7 @@ function Landing() {
           <p className="mt-6 max-w-lg border-2 border-border bg-background/70 px-4 py-2 text-sm font-bold shadow-[4px_4px_0_0_var(--ink)] backdrop-blur-sm sm:text-lg">
             Find the event. Meet the crew. Make the city yours.
           </p>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-5">
+          <div className="mt-8 flex w-full flex-wrap items-center justify-center gap-4 sm:mt-10 sm:gap-5">
             <ExploreButton />
             <div className="ink-frame flex items-center gap-3 bg-background px-4 py-3">
               <span className="flex -space-x-2">
@@ -215,11 +296,11 @@ function Landing() {
                 <span className="h-6 w-6 rounded-full border-2 border-border bg-[var(--sun)]" />
                 <span className="h-6 w-6 rounded-full border-2 border-border bg-[var(--mint)]" />
               </span>
-              <span className="text-sm font-semibold">2.4K finding plans</span>
+              <span className="text-sm font-semibold">{liveLine(stats, true)}</span>
             </div>
           </div>
-          <p className="mt-10 font-mono text-[11px] tracking-[0.22em] uppercase">
-            42 plans live · 2.4K city people
+          <p className="mt-8 font-mono text-[10px] tracking-[0.18em] uppercase sm:mt-10 sm:text-[11px] sm:tracking-[0.22em]">
+            {count(stats?.members, "person", "people")} · {liveLine(stats)}
           </p>
         </div>
       </section>
@@ -228,7 +309,7 @@ function Landing() {
       <section id="do" className="bg-background px-4 py-24 sm:px-8">
         <div className="mx-auto max-w-6xl">
           <p className="eyebrow">Four ways in</p>
-          <h2 className="display-caps mt-3 text-6xl sm:text-8xl">
+          <h2 className="display-caps mt-3 text-5xl sm:text-8xl">
             Things you can <span className="text-primary">do</span>
           </h2>
 
@@ -245,14 +326,14 @@ function Landing() {
                     <p className="font-mono text-[11px] tracking-[0.2em] uppercase">
                       {c.n} / {c.kicker}
                     </p>
-                    <h3 className="display-caps mt-2 text-5xl">{c.title}</h3>
+                    <h3 className="display-caps mt-2 text-4xl sm:text-5xl">{c.title}</h3>
                   </div>
                   <span className="ink-frame shrink-0 bg-background px-3 py-1 font-mono text-[10px] tracking-widest uppercase">
-                    {c.stat}
+                    {c.stat ?? count(stats?.events, "event listed", "events listed")}
                   </span>
                 </div>
                 <p className="px-6 pb-6 text-[15px] leading-relaxed font-medium">{c.body}</p>
-                <div className="relative mx-6 mb-6 h-56 overflow-hidden border-[3px] border-border bg-background">
+                <div className="relative mx-6 mb-6 h-44 overflow-hidden border-[3px] border-border bg-background sm:h-56">
                   <img
                     src={c.img}
                     alt={`${c.title} screen`}
@@ -283,7 +364,7 @@ function Landing() {
 
           <div>
             <p className="eyebrow">Come solo, leave with stories</p>
-            <h2 className="display-caps mt-4 text-6xl sm:text-8xl">
+            <h2 className="display-caps mt-4 text-5xl sm:text-8xl">
               Your next
               <br />
               <span className="text-primary">scene awaits.</span>
@@ -292,21 +373,21 @@ function Landing() {
               Join a sunset walk, claim a seat at an open mic, or find three strangers who also
               refuse to waste Saturday.
             </p>
-            <div className="mt-10 grid grid-cols-3 gap-6">
+            <div className="mt-10 grid grid-cols-3 gap-4 sm:gap-6">
               {[
-                ["42", "live plans"],
-                ["2.4K", "city people"],
-                ["24/7", "Mumbai energy"],
+                [num(stats?.members), stats?.members === 1 ? "person" : "people"],
+                [stats && stats.live < 1 ? "Be first" : num(stats?.live), "on the map now"],
+                [num(stats?.plans), stats?.plans === 1 ? "live plan" : "live plans"],
               ].map(([big, small]) => (
                 <div key={small} className="border-t-2 border-border pt-3">
-                  <p className="display-caps text-4xl">{big}</p>
+                  <p className="display-caps text-3xl sm:text-4xl">{big}</p>
                   <p className="mt-1 text-sm text-muted-foreground">{small}</p>
                 </div>
               ))}
             </div>
             <a
               href={MAP_URL}
-              className="press mt-10 inline-flex items-center gap-3 rounded-full border-[3px] border-border bg-primary px-8 py-4 font-display text-2xl text-primary-foreground uppercase shadow-[6px_6px_0_0_var(--ink)]"
+              className="press mt-10 inline-flex min-h-[44px] max-w-full items-center justify-center gap-3 rounded-full border-[3px] border-border bg-primary px-6 py-3 font-display text-xl text-primary-foreground uppercase shadow-[6px_6px_0_0_var(--ink)] sm:px-8 sm:py-4 sm:text-2xl"
             >
               See who's going
               <Users className="h-5 w-5" strokeWidth={3} />
@@ -337,10 +418,10 @@ function Landing() {
         <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
           <div>
             <p className="eyebrow">Mumbai after hours</p>
-            <h2 className="display-caps mt-4 text-6xl sm:text-8xl">
+            <h2 className="display-caps mt-4 text-5xl sm:text-8xl">
               Plans look better from up here.
             </h2>
-            <div className="mt-8 flex flex-wrap items-center gap-6 text-sm font-semibold">
+            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm font-semibold">
               <span className="flex items-center gap-2">
                 <Clock className="h-4 w-4" /> Friday · 9 PM
               </span>
@@ -363,7 +444,7 @@ function Landing() {
 
       {/* 4 · CLOSE */}
       <section id="close" className="bg-foreground px-4 py-28 text-center text-background">
-        <h2 className="display-caps mx-auto max-w-4xl text-7xl sm:text-9xl">
+        <h2 className="display-caps mx-auto max-w-4xl text-5xl sm:text-9xl">
           Mumbai is <span className="text-primary">outside.</span>
         </h2>
         <p className="mx-auto mt-6 max-w-md text-base opacity-80">
@@ -372,7 +453,7 @@ function Landing() {
         <div className="mt-10 flex justify-center">
           <ExploreButton className="shadow-[6px_6px_0_0_var(--sky)]" />
         </div>
-        <div className="mx-auto mt-20 flex max-w-5xl flex-wrap items-center justify-between gap-4 border-t border-background/25 pt-6 font-mono text-[10px] tracking-[0.2em] uppercase opacity-70">
+        <div className="mx-auto mt-20 flex max-w-5xl flex-wrap items-center justify-center gap-4 border-t border-background/25 pt-6 text-center font-mono text-[10px] tracking-[0.14em] uppercase opacity-70 sm:justify-between sm:text-left sm:tracking-[0.2em]">
           <span>Bambai Side Up</span>
           <span className="flex items-center gap-2">
             <CalendarDays className="h-3.5 w-3.5" /> Built on OpenStreetMap and the BMC's open
