@@ -373,6 +373,27 @@ boot that the bypass is open — but `docker-compose.yml` does not list it in
 
 ---
 
+## Restarting after a change
+
+```bash
+./restart.sh --pull
+```
+
+Pulls, rebuilds and restarts whichever stack is already running, then waits
+for the healthcheck before it returns — so a non-zero exit means the app
+genuinely did not come up, rather than the containers merely having been
+created. `./restart.sh nginx|caddy|plain` forces one; `--clean` tears the
+containers down first.
+
+With nothing running it will not guess between the two HTTPS stacks, because
+`SITE_ADDRESS` is set for both and a wrong guess silently swaps your proxy and
+orphans the old containers. It asks instead.
+
+It never passes `-v` to `down`. That flag would take the database, every
+uploaded photo and the Let's Encrypt certificate with it — and the five
+certificates per hostname per week limit turns that from a minute's mistake
+into a few days' outage.
+
 ## Serving it over HTTPS
 
 Plain HTTP is not just insecure here, it is **broken**: browsers only give the

@@ -45,5 +45,6 @@ docker-compose.yml
 docker-compose.https.yml
 docker-compose.nginx.yml
 Caddyfile
+restart.sh
 nginx/
 .dockerignore
