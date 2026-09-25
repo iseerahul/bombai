@@ -159,35 +159,35 @@ function Landing() {
         <img
           src={stickerChai}
           alt="Cutting chai sticker"
-          className="pointer-events-none absolute left-[3%] top-[15%] z-10 w-24 -rotate-12 sm:left-[6%] sm:w-40 lg:left-[9%] lg:top-[18%] lg:w-48"
+          className="pointer-events-none absolute left-[2%] top-[13%] z-10 w-24 -rotate-12 sm:left-[3%] sm:w-36 lg:left-[4%] lg:top-[14%] lg:w-44"
         />
         <img
           src={stickerVadaPav}
           alt="Vada pav sticker"
-          className="pointer-events-none absolute right-[2%] top-[14%] z-10 w-32 rotate-8 sm:right-[6%] sm:w-52 lg:right-[8%] lg:top-[17%] lg:w-64"
+          className="pointer-events-none absolute right-[1%] top-[6%] z-10 w-28 rotate-8 sm:right-[2%] sm:w-40 lg:right-[3%] lg:top-[7%] lg:w-52"
         />
         <img
           src={stickerRickshaw}
           alt="Auto-rickshaw sticker"
-          className="pointer-events-none absolute bottom-[2%] left-[1%] z-10 w-48 -rotate-6 sm:left-[5%] sm:w-72 lg:left-[7%] lg:w-80"
+          className="pointer-events-none absolute bottom-[1%] left-[0%] z-10 w-44 -rotate-6 sm:left-[2%] sm:w-64 lg:left-[3%] lg:w-72"
         />
         <img
           src={stickerCouple}
           alt="Two friends laughing sticker"
-          className="pointer-events-none absolute right-[1%] bottom-[2%] z-10 w-48 rotate-6 sm:right-[5%] sm:w-72 lg:right-[7%] lg:w-80"
+          className="pointer-events-none absolute right-[0%] bottom-[1%] z-10 w-44 rotate-6 sm:right-[2%] sm:w-64 lg:right-[3%] lg:w-72"
         />
 
         {/* Mumbai moments floating as square cards */}
-        <div className="drift ink-frame absolute left-[5%] top-[34%] z-20 w-20 -rotate-3 overflow-hidden bg-background p-1 sm:left-[18%] sm:w-28 lg:left-[23%] lg:w-36">
+        <div className="drift ink-frame absolute left-[4%] top-[38%] z-20 w-20 -rotate-3 overflow-hidden bg-background p-1 sm:left-[14%] sm:top-[40%] sm:w-28 lg:left-[17%] lg:top-[41%] lg:w-36">
           <img src={nightDrive} alt="Friends out in Mumbai at night" className="aspect-square w-full object-cover" />
         </div>
-        <div className="drift ink-frame absolute right-[5%] top-[31%] z-20 w-20 rotate-3 overflow-hidden bg-background p-1 sm:right-[18%] sm:w-28 lg:right-[23%] lg:w-36" style={{ animationDelay: "1.2s" }}>
+        <div className="drift ink-frame absolute right-[4%] top-[36%] z-20 w-20 rotate-3 overflow-hidden bg-background p-1 sm:right-[14%] sm:top-[38%] sm:w-28 lg:right-[17%] lg:top-[39%] lg:w-36" style={{ animationDelay: "1.2s" }}>
           <img src={friendsToast} alt="Friends raising a toast" className="aspect-square w-full object-cover" />
         </div>
-        <div className="drift ink-frame absolute bottom-[20%] left-[9%] z-20 w-20 rotate-2 overflow-hidden bg-background p-1 sm:bottom-[18%] sm:left-[22%] sm:w-28 lg:left-[27%] lg:w-36" style={{ animationDelay: "2.4s" }}>
+        <div className="drift ink-frame absolute bottom-[26%] left-[6%] z-20 w-20 rotate-2 overflow-hidden bg-background p-1 sm:bottom-[27%] sm:left-[15%] sm:w-28 lg:bottom-[25%] lg:left-[19%] lg:w-36" style={{ animationDelay: "2.4s" }}>
           <img src={dancefloor} alt="A Mumbai dance floor" className="aspect-square w-full object-cover" />
         </div>
-        <div className="drift ink-frame absolute right-[9%] bottom-[20%] z-20 w-20 -rotate-2 overflow-hidden bg-background p-1 sm:right-[22%] sm:bottom-[18%] sm:w-28 lg:right-[27%] lg:w-36" style={{ animationDelay: "0.6s" }}>
+        <div className="drift ink-frame absolute right-[6%] bottom-[26%] z-20 w-20 -rotate-2 overflow-hidden bg-background p-1 sm:right-[15%] sm:bottom-[27%] sm:w-28 lg:right-[19%] lg:bottom-[26%] lg:w-36" style={{ animationDelay: "0.6s" }}>
           <img src={marineSnacks} alt="Late-night snacks by Marine Drive" className="aspect-square w-full object-cover" />
         </div>
 
