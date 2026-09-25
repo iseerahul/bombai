@@ -26,11 +26,11 @@ WORKDIR /build
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
-COPY mumbai-zenscape/package.json mumbai-zenscape/package-lock.json mumbai-zenscape/
+COPY landing/package.json landing/package-lock.json landing/
 # Its lockfile IS committed, so pin exactly. Resolving ~60 caret ranges fresh
 # on every cache miss meant the image could build against versions nobody had
 # run, and a break would surface as a confusing prerender failure.
-RUN cd mumbai-zenscape && npm ci --no-audit --no-fund
+RUN cd landing && npm ci --no-audit --no-fund
 
 COPY . .
 

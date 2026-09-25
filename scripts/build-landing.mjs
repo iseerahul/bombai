@@ -38,7 +38,7 @@ function landingDir() {
   if (existsSync(landing)) return landing
   if (existsSync(legacy)) return legacy
   throw new Error(
-    'No landing app found. Expected ./mumbai-zenscape (or ./landing).' +
+    'No landing app found. Expected ./landing (or ./mumbai-zenscape).' +
       ' It is vendored into this repo, so a normal clone already has it.'
   )
 }

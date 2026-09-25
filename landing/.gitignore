@@ -1,0 +1,17 @@
+node_modules
+dist
+.output
+.nitro
+.tanstack
+*.local
+.DS_Store
+
+# Secrets never belong here.
+.env
+.env.*.local
+
+# Committed on purpose, as an exception to the line above: it holds one
+# localhost URL and nothing secret, and without it a fresh clone's
+# `npm run dev:landing` has an "Explore Bambai" button that 404s, because the
+# map runs on a different port in development. Never put a secret in here.
+!.env.development

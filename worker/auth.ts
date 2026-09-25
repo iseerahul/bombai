@@ -228,7 +228,17 @@ async function finishLogin(request: Request, env: Env): Promise<Response> {
     })
 
   if (url.searchParams.get('error')) return fail('cancelled')
-  if (!code || !state || !expected || state !== expected) return fail('bad_state')
+  /*
+   * Four distinct failures used to share one name. "bad_state" told you the
+   * sign-in broke and nothing about where, and the causes want completely
+   * different fixes: a missing cookie is usually a proxy or a Secure-flag
+   * problem, a missing code means Google never issued one, and a genuine
+   * mismatch is the CSRF case the check exists for.
+   */
+  if (!code) return fail('no_code')
+  if (!state) return fail('no_state_param')
+  if (!expected) return fail('no_state_cookie')
+  if (state !== expected) return fail('state_mismatch')
   const creds = oauthCreds(env)
   if (!creds) return fail('not_configured')
 

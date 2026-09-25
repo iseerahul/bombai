@@ -21,7 +21,7 @@ The product is a landing page and a map app, deployed together:
 
 | URL | What | Lives in | Stack |
 |---|---|---|---|
-| `/` | The landing page — the front door | `mumbai-zenscape/` | TanStack Start, prerendered |
+| `/` | The landing page — the front door | `landing/` | TanStack Start, prerendered |
 | `/app/` | The map, and everything in it | `src/` | Vite + React SPA |
 | `/api/*` | The backend | `worker/` | Cloudflare Worker |
 
@@ -270,7 +270,7 @@ curl -X POST http://127.0.0.1:8787/api/events/refresh
 Expect a couple of hundred events. It is also the "Refresh" button in the
 Events tab, and it runs on a cron once deployed.
 
-`mumbai-zenscape/.env.development` points "Explore Bambai" at the map's dev
+`landing/.env.development` points "Explore Bambai" at the map's dev
 port. It is `.env.development` rather than `.env` on purpose — a plain `.env`
 is read in *every* mode and would bake `127.0.0.1` into the production build.
 
@@ -447,7 +447,7 @@ instance and set `SITE_ADDRESS` to the domain instead.
 ## Project layout
 
 ```
-mumbai-zenscape/          The landing page at / — vendored from Lovable, own deps
+landing/          The landing page at / — vendored from Lovable, own deps
 static/_headers           Headers, incl. the CSP, for the whole origin
 dist/                     Build output: landing at /, map at /app/
 
@@ -503,7 +503,7 @@ Stated here rather than discovered during a demo:
   `nature-in-city.jpg` and `city-dreamer.jpg` are `.asset.json` pointers to
   `/__l5e/assets-v1/…`, a path that only resolves on Lovable's own preview
   host. They are already broken on localhost. Fix by downloading both into
-  `mumbai-zenscape/src/assets/` and importing them like the other artwork.
+  `landing/src/assets/` and importing them like the other artwork.
 - **The landing's CSP rule is unverified.** `static/_headers` relaxes
   `script-src` for `/` alone, because TanStack ships two inline hydration
   scripts; the map keeps the strict policy. That relies on a more specific rule
@@ -511,7 +511,7 @@ Stated here rather than discovered during a demo:
   response headers on `/` and `/app/` after the first deploy.
 - **`node_modules` lives inside OneDrive**, for both apps. OneDrive syncs every
   one of those files, which makes installs slow and can lock the directory —
-  it blocked renaming `mumbai-zenscape/` during this work. Excluding the
+  it blocked renaming `landing/` during this work. Excluding the
   project folder from OneDrive sync would fix it.
 - **Dead LLM code.** An earlier version sent questions to Gemini. Search is
   deterministic now, and `askServer`, `buildCandidates`, `localInterpret` and

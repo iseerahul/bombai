@@ -1,0 +1,170 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Bambai design system — editorial collage.
+ * Bebas Neue display caps / DM Mono eyebrows / Manrope body.
+ * Cream + pale blue grounds, near-black ink, vermilion accent.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ink: var(--ink);
+  --color-cream: var(--cream);
+  --color-sky: var(--sky);
+  --color-coral: var(--coral);
+  --color-azure: var(--azure);
+  --color-mint: var(--mint);
+  --color-sun: var(--sun);
+  --font-display: "Bebas Neue", "Arial Narrow", sans-serif;
+  --font-poster: "Anton", "Arial Black", sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: oklch(0.977 0.012 95);
+  --foreground: oklch(0.18 0.03 265);
+  --ink: oklch(0.18 0.03 265);
+  --cream: oklch(0.977 0.012 95);
+  --sky: oklch(0.905 0.048 230);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--foreground);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(0.606 0.243 27.5);
+  --primary-foreground: oklch(0.99 0.005 95);
+  --secondary: oklch(0.905 0.048 230);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(0.945 0.012 95);
+  --muted-foreground: oklch(0.46 0.02 265);
+  --accent: oklch(0.905 0.048 230);
+  --accent-foreground: var(--foreground);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.18 0.03 265);
+  --input: oklch(0.18 0.03 265);
+  --ring: oklch(0.606 0.243 27.5);
+  --coral: oklch(0.71 0.15 25);
+  --azure: oklch(0.66 0.17 240);
+  --mint: oklch(0.79 0.16 152);
+  --sun: oklch(0.84 0.16 86);
+  --shadow-hard: 6px 6px 0 0 var(--ink);
+  --shadow-hard-sm: 4px 4px 0 0 var(--ink);
+  --shadow-hard-lg: 12px 12px 0 0 var(--ink);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+}
+
+@utility ink-frame {
+  border: 3px solid var(--ink);
+  box-shadow: var(--shadow-hard);
+}
+
+@utility ink-frame-lg {
+  border: 4px solid var(--ink);
+  box-shadow: var(--shadow-hard-lg);
+}
+
+@utility display-caps {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+  line-height: 0.85;
+  text-transform: uppercase;
+}
+
+@utility poster-caps {
+  font-family: var(--font-poster);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 0.82;
+  text-transform: uppercase;
+}
+
+@utility eyebrow {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.75rem;
+}
+
+@utility press {
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+  &:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 9px 9px 0 0 var(--ink);
+  }
+  &:active {
+    transform: translate(3px, 3px);
+    box-shadow: 2px 2px 0 0 var(--ink);
+  }
+}
+
+@keyframes bambai-drift {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--tilt, 0deg));
+  }
+  50% {
+    transform: translateY(-10px) rotate(var(--tilt, 0deg));
+  }
+}
+
+@keyframes bambai-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@utility drift {
+  animation: bambai-drift 6s ease-in-out infinite;
+}
+
+@utility marquee-track {
+  animation: bambai-marquee 30s linear infinite;
+  width: max-content;
+}
