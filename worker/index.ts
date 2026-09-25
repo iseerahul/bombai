@@ -391,6 +391,51 @@ export default {
       const destinations = await routeDestinations(request, env, url)
       if (destinations) return destinations
 
+      /*
+       * Public counts for the landing page.
+       *
+       * It used to print "42 plans live · 2.4K city people", and both numbers
+       * were invented. A landing page that opens with a fabricated figure is
+       * the first thing a visitor can check and catch you on, and this app's
+       * whole pitch is that it says what it does not know.
+       *
+       * So these are real rows, and small numbers are shown as they are. No
+       * auth: they are aggregates, nothing here identifies anyone.
+       */
+      if (url.pathname === '/api/stats') {
+        const now = Date.now()
+        const one = async (sql: string, ...bind: unknown[]) => {
+          const row = await env.DB.prepare(sql)
+            .bind(...bind)
+            .first<{ n: number }>()
+          return row?.n ?? 0
+        }
+
+        const [members, activities, events, spots] = await Promise.all([
+          one('SELECT COUNT(*) AS n FROM users'),
+          one('SELECT COUNT(*) AS n FROM activities WHERE expires_at > ?', now),
+          one('SELECT COUNT(*) AS n FROM events WHERE expires_at > ?', now),
+          one("SELECT COUNT(*) AS n FROM spots WHERE status = 'visible'"),
+        ])
+
+        return json(
+          {
+            // Things you could turn up to right now.
+            plans: activities + events,
+            activities,
+            events,
+            // People with an account. Not "visitors" — we do not track those.
+            members,
+            // Places added by people, on top of the baked OpenStreetMap set.
+            spots,
+          },
+          200,
+          // A minute of cache: the landing is static and every visitor hits
+          // this, but the numbers only need to be roughly current.
+          { 'Cache-Control': 'public, max-age=60' }
+        )
+      }
+
       if (url.pathname === '/api/health') {
         // `routing` lets the client disable trip planning up front rather than
         // offering it and failing at the moment someone tries to use it.
