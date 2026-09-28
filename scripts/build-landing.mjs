@@ -79,6 +79,25 @@ if (!existsSync(join(out, 'index.html'))) {
   )
 }
 
+/*
+ * Clear the landing's half of dist/ before copying the new one in.
+ *
+ * `cp` with force only overwrites what it is given; anything from a previous
+ * build that the new one does not produce just stays. That is how a deleted
+ * Lovable favicon.ico kept being deployed after it had been removed from the
+ * source — and browsers request /favicon.ico whether or not anything links to
+ * it, so the old icon went on showing in the tab.
+ *
+ * dist/app is the map app, built before this runs, and must survive.
+ */
+const keep = new Set(['app'])
+if (existsSync(dist)) {
+  for (const entry of await readdir(dist)) {
+    if (keep.has(entry)) continue
+    await rm(join(dist, entry), { recursive: true, force: true })
+  }
+}
+
 console.log('→ copying into dist/')
 await mkdir(dist, { recursive: true })
 

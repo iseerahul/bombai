@@ -229,7 +229,7 @@ function Landing() {
       </header>
 
       {/* 1 · HERO */}
-      <section id="top" className="relative -mt-[4.5rem] min-h-screen overflow-hidden">
+      <section id="top" className="relative -mt-[4.5rem] min-h-[126svh] overflow-hidden sm:min-h-screen">
         <img
           src={mapBlue}
           alt="Illustrated blue map of Mumbai"
@@ -240,39 +240,39 @@ function Landing() {
         <img
           src={stickerChai}
           alt="Cutting chai sticker"
-          className="pointer-events-none absolute left-[2%] top-[9%] z-10 w-16 -rotate-12 sm:left-[3%] sm:top-[13%] sm:w-36 lg:left-[4%] lg:top-[14%] lg:w-44"
+          className="pointer-events-none absolute left-[-3%] top-[4%] z-10 w-16 -rotate-12 sm:left-[3%] sm:top-[13%] sm:w-36 lg:left-[4%] lg:top-[14%] lg:w-44"
         />
         <img
           src={stickerVadaPav}
           alt="Vada pav sticker"
-          className="pointer-events-none absolute right-[1%] top-[5%] z-10 w-16 rotate-8 sm:right-[2%] sm:top-[6%] sm:w-40 lg:right-[3%] lg:top-[7%] lg:w-52"
+          className="pointer-events-none absolute right-[-3%] top-[2%] z-10 w-16 rotate-8 sm:right-[2%] sm:top-[6%] sm:w-40 lg:right-[3%] lg:top-[7%] lg:w-52"
         />
         <img
           src={stickerRickshaw}
           alt="Auto-rickshaw sticker"
-          className="pointer-events-none absolute bottom-[1%] left-[0%] z-10 w-24 -rotate-6 sm:left-[2%] sm:w-64 lg:left-[3%] lg:w-72"
+          className="pointer-events-none absolute bottom-[0%] left-[-4%] z-10 w-28 -rotate-6 sm:left-[2%] sm:w-64 lg:left-[3%] lg:w-72"
         />
         <img
           src={stickerCouple}
           alt="Two friends laughing sticker"
-          className="pointer-events-none absolute right-[0%] bottom-[1%] z-10 w-24 rotate-6 sm:right-[2%] sm:w-64 lg:right-[3%] lg:w-72"
+          className="pointer-events-none absolute right-[-4%] bottom-[0%] z-10 w-28 rotate-6 sm:right-[2%] sm:w-64 lg:right-[3%] lg:w-72"
         />
 
         {/* Mumbai moments floating as square cards */}
-        <div className="drift ink-frame absolute left-[4%] top-[38%] z-20 hidden w-20 -rotate-3 overflow-hidden bg-background p-1 sm:block sm:left-[14%] sm:top-[40%] sm:w-28 lg:left-[17%] lg:top-[41%] lg:w-36">
+        <div className="drift ink-frame absolute left-[1%] top-[15%] z-20 w-20 -rotate-3 overflow-hidden bg-background p-1 sm:left-[14%] sm:top-[40%] sm:w-28 lg:left-[17%] lg:top-[41%] lg:w-36">
           <img src={nightDrive} alt="Friends out in Mumbai at night" className="aspect-square w-full object-cover" />
         </div>
-        <div className="drift ink-frame absolute right-[4%] top-[36%] z-20 hidden w-20 rotate-3 overflow-hidden bg-background p-1 sm:block sm:right-[14%] sm:top-[38%] sm:w-28 lg:right-[17%] lg:top-[39%] lg:w-36" style={{ animationDelay: "1.2s" }}>
+        <div className="drift ink-frame absolute right-[1%] top-[13%] z-20 w-20 rotate-3 overflow-hidden bg-background p-1 sm:right-[14%] sm:top-[38%] sm:w-28 lg:right-[17%] lg:top-[39%] lg:w-36" style={{ animationDelay: "1.2s" }}>
           <img src={friendsToast} alt="Friends raising a toast" className="aspect-square w-full object-cover" />
         </div>
-        <div className="drift ink-frame absolute bottom-[26%] left-[6%] z-20 hidden w-20 rotate-2 overflow-hidden bg-background p-1 sm:block sm:bottom-[27%] sm:left-[15%] sm:w-28 lg:bottom-[25%] lg:left-[19%] lg:w-36" style={{ animationDelay: "2.4s" }}>
+        <div className="drift ink-frame absolute bottom-[19%] left-[1%] z-20 w-20 rotate-2 overflow-hidden bg-background p-1 sm:bottom-[27%] sm:left-[15%] sm:w-28 lg:bottom-[25%] lg:left-[19%] lg:w-36" style={{ animationDelay: "2.4s" }}>
           <img src={dancefloor} alt="A Mumbai dance floor" className="aspect-square w-full object-cover" />
         </div>
-        <div className="drift ink-frame absolute right-[6%] bottom-[26%] z-20 hidden w-20 -rotate-2 overflow-hidden bg-background p-1 sm:block sm:right-[15%] sm:bottom-[27%] sm:w-28 lg:right-[19%] lg:bottom-[26%] lg:w-36" style={{ animationDelay: "0.6s" }}>
+        <div className="drift ink-frame absolute right-[1%] bottom-[17%] z-20 w-20 -rotate-2 overflow-hidden bg-background p-1 sm:right-[15%] sm:bottom-[27%] sm:w-28 lg:right-[19%] lg:bottom-[26%] lg:w-36" style={{ animationDelay: "0.6s" }}>
           <img src={marineSnacks} alt="Late-night snacks by Marine Drive" className="aspect-square w-full object-cover" />
         </div>
 
-        <div className="relative z-30 flex min-h-screen flex-col items-center justify-center px-4 pt-28 pb-44 text-center sm:pb-20">
+        <div className="relative z-30 flex min-h-[126svh] flex-col items-center justify-center px-4 pt-28 pb-28 text-center sm:min-h-screen sm:pb-20">
           <span className="ink-frame bg-foreground px-4 py-2 font-sans text-[11px] font-extrabold tracking-wide text-background uppercase sm:text-xs">
             Mumbai is outside · {count(stats?.members, "person", "people")}
           </span>
