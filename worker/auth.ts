@@ -112,6 +112,17 @@ function cookie(
  * Worker on :8787, so the Worker's own request URL is the wrong origin for an
  * OAuth redirect. APP_ORIGIN settles it explicitly.
  */
+/*
+ * Where to send the browser after a sign-in attempt.
+ *
+ * The map app is served under /app/ — see `base` in vite.config.ts — and this
+ * used to redirect to a bare /hangout. Nothing serves that path, so the
+ * single-page fallback handed back the LANDING page, whose router knows only
+ * "/". The result was a blank screen at the end of a successful Google
+ * sign-in, which looks like auth failing when auth in fact worked.
+ */
+const APP_PATH = '/app/'
+
 function appOrigin(request: Request, env: Env): string {
   if (env.APP_ORIGIN) return env.APP_ORIGIN.replace(/\/$/, '')
   return new URL(request.url).origin
@@ -224,7 +235,7 @@ async function finishLogin(request: Request, env: Env): Promise<Response> {
   const fail = (reason: string) =>
     new Response(null, {
       status: 302,
-      headers: { Location: `${origin}/hangout?auth_error=${reason}` },
+      headers: { Location: `${origin}${APP_PATH}?auth_error=${reason}` },
     })
 
   if (url.searchParams.get('error')) return fail('cancelled')
@@ -308,7 +319,7 @@ async function finishLogin(request: Request, env: Env): Promise<Response> {
       .run()
   }
 
-  const headers = new Headers({ Location: `${origin}/hangout` })
+  const headers = new Headers({ Location: `${origin}${APP_PATH}` })
   headers.append('Set-Cookie', await startSession(env, userId, secure))
   // Burn the state cookie.
   headers.append('Set-Cookie', cookie(STATE_COOKIE, '', { maxAge: 0, secure }))

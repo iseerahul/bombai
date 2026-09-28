@@ -518,6 +518,46 @@ if (!LOOPBACK && process.env.ALLOW_DEV_LOGIN !== '1') {
   env.DEV_LOGIN_DISABLED = '1'
 }
 
+/*
+ * Run the Worker's scheduled handler, because nothing else here will.
+ *
+ * wrangler.toml declares a daily cron, and Cloudflare honours it. This shim
+ * does not — and `scheduled()` is not only a cleanup sweep: sweepEvents()
+ * seeds the curated nights and pulls from Luma, AllEvents and Ticketmaster.
+ *
+ * So a self-hosted container started with an empty volume showed an events
+ * tab that stayed empty forever, with nothing in the logs to say why. The
+ * only way to fill it was a POST to /api/events/refresh that nobody knew to
+ * make.
+ *
+ * Once shortly after boot, then every six hours. The importers are idempotent
+ * — the test suite asserts a refresh creates no duplicate rows — so a missed
+ * or repeated run costs nothing.
+ */
+const SCHEDULED_EVERY_MS = 6 * 60 * 60 * 1000
+
+async function runScheduled(why) {
+  if (typeof worker.scheduled !== 'function') return
+  const started = Date.now()
+  try {
+    await worker.scheduled({ scheduledTime: Date.now(), cron: 'shim' }, env, ctx)
+    const { n } = sqlite
+      .prepare('SELECT COUNT(*) AS n FROM events WHERE expires_at > ?')
+      .get(Date.now()) ?? { n: 0 }
+    console.log(
+      `  scheduled (${why}): done in ${((Date.now() - started) / 1000).toFixed(1)}s, ${n} events live`
+    )
+  } catch (err) {
+    // Never fatal: the app works without an import, it just has less on it.
+    console.error(`  scheduled (${why}) failed:`, err?.message ?? err)
+  }
+}
+
+// A few seconds in, so the port is already accepting requests and a slow
+// import cannot make the container look unhealthy at startup.
+setTimeout(() => void runScheduled('startup'), 4000).unref?.()
+setInterval(() => void runScheduled('6h'), SCHEDULED_EVERY_MS).unref?.()
+
 server.listen(PORT, HOST, () => {
   console.log(`\n  Worker (Node shim)  http://127.0.0.1:${PORT}`)
   console.log(`  D1                  ${dbPath.replace(ROOT, '.')}`)

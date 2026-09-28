@@ -287,6 +287,42 @@ export default function App() {
     ).then(refreshAmbient)
   }, [refreshAmbient])
 
+  /*
+   * Say something when a sign-in attempt comes back failed.
+   *
+   * The Worker redirects here with ?auth_error=<reason> and nothing read it,
+   * so a failed Google sign-in dropped you back on the map with no account and
+   * no explanation — indistinguishable from never having tried.
+   *
+   * The reason is stripped from the URL afterwards so a refresh or a shared
+   * link does not replay a stale error.
+   */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const reason = params.get('auth_error')
+    if (!reason) return
+
+    const said: Record<string, string> = {
+      cancelled: 'Sign-in was cancelled.',
+      not_configured: 'Google sign-in is not set up on this server.',
+      no_code: 'Google did not complete the sign-in. Try again.',
+      no_state_param: 'Google did not complete the sign-in. Try again.',
+      no_state_cookie:
+        'Sign-in timed out, or your browser blocked the cookie it needs. Try again.',
+      state_mismatch: 'That sign-in link had expired. Try again.',
+    }
+    setBanner(said[reason] ?? 'Could not sign you in. Try again.')
+    window.setTimeout(() => setBanner(null), 6000)
+
+    params.delete('auth_error')
+    const rest = params.toString()
+    window.history.replaceState(
+      {},
+      '',
+      window.location.pathname + (rest ? `?${rest}` : '')
+    )
+  }, [])
+
   // Show the user where they are the moment the map opens.
   useEffect(() => {
     let cancelled = false

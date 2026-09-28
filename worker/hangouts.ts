@@ -637,9 +637,16 @@ export async function sweepHangouts(env: Env): Promise<void> {
          (SELECT id FROM activities WHERE expires_at < ?)`
     ).bind(now),
     env.DB.prepare('DELETE FROM activities WHERE expires_at < ?').bind(now),
-    // Profiles nobody has used for 90 days serve no purpose.
-    env.DB.prepare('DELETE FROM profiles WHERE last_seen < ?').bind(
-      now - 90 * 24 * 60 * 60 * 1000
-    ),
+    /*
+     * There was a sweep of old `profiles` rows here. schema.sql drops that
+     * table outright — it was the pseudonymous account system that `users`
+     * replaced — so the statement threw "no such table: profiles" every time
+     * the sweep ran.
+     *
+     * Because it ran inside this batch, the throw took the whole scheduled
+     * run with it, and scheduled() is what imports events. The visible symptom
+     * was an events tab that stayed empty forever on a fresh database, with
+     * nothing about events in the error.
+     */
   ])
 }
