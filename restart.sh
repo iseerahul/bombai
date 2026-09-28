@@ -118,6 +118,24 @@ fi
 echo "→ building and starting: $COMPOSE_FILE"
 $DC -f "$COMPOSE_FILE" up --build -d --remove-orphans
 
+# Recreate the proxy after the app, always.
+#
+# Two reasons, and the first one bites every single rebuild. nginx and Caddy
+# resolve the app container's hostname when they start and cache the address;
+# rebuilding the app hands it a NEW container IP, so the proxy keeps sending
+# traffic to the dead one and every request 502s while the app sits there
+# healthy. The nginx config now re-resolves per request, but the proxy has to
+# be restarted once to pick that config up.
+#
+# Second, both proxies read their config from a bind mount, so editing the
+# template or the Caddyfile changes nothing until the container is recreated —
+# `up` sees no reason to touch it.
+if [ "$STACK" != "plain" ]; then
+  PROXY=$([ "$STACK" = "nginx" ] && echo nginx || echo caddy)
+  echo "→ recreating $PROXY so it re-resolves the app and re-reads its config"
+  $DC -f "$COMPOSE_FILE" up -d --force-recreate "$PROXY"
+fi
+
 # --- wait for it to actually answer -----------------------------------------
 #
 # `up -d` returns as soon as the containers are created, which is well before
@@ -149,7 +167,15 @@ if [ "$STACK" = "plain" ]; then
   echo "  http://localhost:${PORT:-8787}      landing"
   echo "  http://localhost:${PORT:-8787}/app/ map"
 else
-  ORIGIN="$(grep -E '^APP_ORIGIN=' .env | cut -d= -f2- | tr -d '"'"'"' ')"
+  # tail -1: a duplicated APP_ORIGIN is easy to end up with, and Compose uses
+  # the LAST assignment. Taking every match printed two URLs run together.
+  ORIGIN="$(grep -E '^APP_ORIGIN=' .env | tail -1 | cut -d= -f2- | tr -d '"'"'"' ')"
+  if [ "$(grep -cE '^APP_ORIGIN=' .env)" -gt 1 ]; then
+    echo "! .env sets APP_ORIGIN more than once. Compose uses the last one:"
+    echo "    $ORIGIN"
+    echo "  Delete the others — a stale one here is a redirect_uri_mismatch waiting to happen."
+    echo
+  fi
   echo "  ${ORIGIN:-https://<SITE_ADDRESS>}      landing"
   echo "  ${ORIGIN:-https://<SITE_ADDRESS>}/app/ map"
   echo

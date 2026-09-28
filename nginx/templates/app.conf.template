@@ -45,7 +45,21 @@ server {
     client_max_body_size 16m;
 
     location / {
-        proxy_pass http://bambai:8787;
+        # Resolve the app container's address per request, not once at start.
+        # 
+        # With a literal hostname in proxy_pass, nginx resolves `bambai` when
+        # it loads the config and then caches that IP for the life of the
+        # process. Rebuilding the app gives it a NEW container IP, and nginx
+        # keeps proxying to the dead one — every request 502s until nginx is
+        # restarted, even though the app is healthy.
+        # 
+        # 127.0.0.11 is Docker's embedded DNS server. Putting the host in a
+        # variable is what forces nginx to look it up at request time; the
+        # cost is that a variable proxy_pass no longer appends the matched
+        # URI, so $request_uri has to be explicit.
+        resolver 127.0.0.11 valid=10s ipv6=off;
+        set $app_host bambai;
+        proxy_pass http://$app_host:8787$request_uri;
         proxy_http_version 1.1;
 
         proxy_set_header Host              $host;
